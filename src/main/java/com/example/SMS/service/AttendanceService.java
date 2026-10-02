@@ -1,6 +1,7 @@
 package com.example.SMS.service;
 
 import com.example.SMS.dto.AttendanceRequests;
+import com.example.SMS.security.AuthenticatedUser;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,16 +25,24 @@ public class AttendanceService {
         this.jdbc = jdbc;
     }
 
-    public List<SessionView> listSessions(UUID tenantId) {
+    public List<SessionView> listSessions(AuthenticatedUser user) {
+        boolean admin = hasAdminRole(user);
         return jdbc.query("""
                 SELECT s.id, s.class_section_id, s.course_id, s.teacher_user_id, s.starts_at, s.ends_at
                 FROM attendance_sessions s
                 JOIN class_sections cs ON cs.id = s.class_section_id
-                WHERE cs.tenant_id = ? ORDER BY s.starts_at DESC LIMIT 500
+                WHERE cs.tenant_id = ? AND (? = TRUE OR s.teacher_user_id = ?)
+                ORDER BY s.starts_at DESC LIMIT 500
                 """, (rs, row) -> session(rs.getObject("id", UUID.class),
                 rs.getObject("class_section_id", UUID.class), rs.getObject("course_id", UUID.class),
                 rs.getObject("teacher_user_id", UUID.class), rs.getObject("starts_at", OffsetDateTime.class),
-                rs.getObject("ends_at", OffsetDateTime.class)), tenantId);
+                rs.getObject("ends_at", OffsetDateTime.class)), user.tenantId(), admin, user.id());
+    }
+
+    public SessionView getSession(AuthenticatedUser user, UUID id) {
+        SessionView session = getSession(user.tenantId(), id);
+        assertSessionAccess(user, session.id());
+        return session;
     }
 
     public SessionView getSession(UUID tenantId, UUID id) {
@@ -134,8 +143,8 @@ public class AttendanceService {
         }
     }
 
-    public List<RecordView> records(UUID tenantId, UUID sessionId) {
-        getSession(tenantId, sessionId);
+    public List<RecordView> records(AuthenticatedUser user, UUID sessionId) {
+        assertSessionAccess(user, sessionId);
         return jdbc.query("""
                 SELECT ar.id, ar.session_id, ar.student_id, ar.status, ar.source, ar.marked_at
                 FROM attendance_records ar
@@ -145,11 +154,11 @@ public class AttendanceService {
                 """, (rs, row) -> record(rs.getObject("id", UUID.class),
                 rs.getObject("session_id", UUID.class), rs.getObject("student_id", UUID.class),
                 rs.getString("status"), rs.getString("source"),
-                rs.getObject("marked_at", OffsetDateTime.class)), tenantId, sessionId);
+                rs.getObject("marked_at", OffsetDateTime.class)), user.tenantId(), sessionId);
     }
 
-    public List<AttendanceStudentView> eligibleStudents(UUID tenantId, UUID sessionId) {
-        getSession(tenantId, sessionId);
+    public List<AttendanceStudentView> eligibleStudents(AuthenticatedUser user, UUID sessionId) {
+        assertSessionAccess(user, sessionId);
         return jdbc.query("""
                 SELECT st.id, st.enrollment_no, st.first_name, st.last_name
                 FROM attendance_sessions s
@@ -160,11 +169,11 @@ public class AttendanceService {
                 ORDER BY st.last_name, st.first_name, st.enrollment_no
                 """, (rs, row) -> new AttendanceStudentView(
                 rs.getObject("id", UUID.class), rs.getString("enrollment_no"),
-                rs.getString("first_name"), rs.getString("last_name")), tenantId, sessionId);
+                rs.getString("first_name"), rs.getString("last_name")), user.tenantId(), sessionId);
     }
 
-    public RecordView getRecord(UUID tenantId, UUID id) {
-        return found(jdbc.query("""
+    public RecordView getRecord(AuthenticatedUser user, UUID id) {
+        RecordView record = found(jdbc.query("""
                 SELECT ar.id, ar.session_id, ar.student_id, ar.status, ar.source, ar.marked_at
                 FROM attendance_records ar
                 JOIN attendance_sessions s ON s.id = ar.session_id
@@ -173,12 +182,16 @@ public class AttendanceService {
                 """, (rs, row) -> record(rs.getObject("id", UUID.class),
                 rs.getObject("session_id", UUID.class), rs.getObject("student_id", UUID.class),
                 rs.getString("status"), rs.getString("source"),
-                rs.getObject("marked_at", OffsetDateTime.class)), tenantId, id), "Attendance record");
+                rs.getObject("marked_at", OffsetDateTime.class)), user.tenantId(), id), "Attendance record");
+        assertSessionAccess(user, record.sessionId());
+        return record;
     }
 
     @Transactional
-    public RecordView createRecord(UUID tenantId, UUID sessionId, AttendanceRequests.Record request) {
+    public RecordView createRecord(AuthenticatedUser user, UUID sessionId, AttendanceRequests.Record request) {
+        UUID tenantId = user.tenantId();
         lockSessionSection(tenantId, sessionId);
+        assertSessionAccess(user, sessionId);
         List<RecordView> rows = jdbc.query("""
                 INSERT INTO attendance_records (session_id, student_id, status, source)
                 SELECT s.id, st.id, ?, 'MANUAL' FROM attendance_sessions s
@@ -200,7 +213,10 @@ public class AttendanceService {
     }
 
     @Transactional
-    public RecordView updateRecord(UUID tenantId, UUID id, String status) {
+    public RecordView updateRecord(AuthenticatedUser user, UUID id, String status) {
+        UUID tenantId = user.tenantId();
+        RecordView current = getRecord(user, id);
+        assertSessionAccess(user, current.sessionId());
         List<RecordView> rows = jdbc.query("""
                 UPDATE attendance_records ar SET status = ?, source = 'MANUAL', marked_at = now()
                 WHERE ar.id = ? AND EXISTS
@@ -304,6 +320,27 @@ public class AttendanceService {
         if (!request.endsAt().isAfter(request.startsAt())) {
             throw new ResponseStatusException(BAD_REQUEST, "Session end time must follow its start time");
         }
+    }
+
+    private void assertSessionAccess(AuthenticatedUser user, UUID sessionId) {
+        if (hasAdminRole(user)) {
+            getSession(user.tenantId(), sessionId);
+            return;
+        }
+        Boolean assigned = jdbc.queryForObject("""
+                SELECT EXISTS (
+                    SELECT 1 FROM attendance_sessions s
+                    JOIN class_sections cs ON cs.id = s.class_section_id
+                    WHERE cs.tenant_id = ? AND s.id = ? AND s.teacher_user_id = ?
+                )
+                """, Boolean.class, user.tenantId(), sessionId, user.id());
+        if (!Boolean.TRUE.equals(assigned)) {
+            throw missing("Attendance session");
+        }
+    }
+
+    private boolean hasAdminRole(AuthenticatedUser user) {
+        return user.roles().contains("SCHOOL_ADMIN") || user.roles().contains("SUPER_ADMIN");
     }
 
     private UUID lockSessionSection(UUID tenantId, UUID sessionId) {

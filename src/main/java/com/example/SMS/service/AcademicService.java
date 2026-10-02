@@ -162,6 +162,119 @@ public class AcademicService {
         }
     }
 
+    public List<EnrollmentView> enrollments(UUID tenantId) {
+        return jdbc.query("""
+                SELECT e.id, e.student_id, e.class_section_id, e.enrolled_on, e.status,
+                       st.enrollment_no, st.first_name, st.last_name, cs.name AS section_name
+                FROM enrollments e
+                JOIN students st ON st.id = e.student_id
+                JOIN class_sections cs ON cs.id = e.class_section_id
+                WHERE st.tenant_id = ? AND cs.tenant_id = ?
+                ORDER BY e.enrolled_on DESC, st.last_name, st.first_name
+                LIMIT 1000
+                """, (rs, row) -> enrollment(rs.getObject("id", UUID.class),
+                rs.getObject("student_id", UUID.class), rs.getObject("class_section_id", UUID.class),
+                rs.getObject("enrolled_on", LocalDate.class), rs.getString("status"),
+                rs.getString("enrollment_no"), rs.getString("first_name"),
+                rs.getString("last_name"), rs.getString("section_name")), tenantId, tenantId);
+    }
+
+    @Transactional
+    public EnrollmentView createEnrollment(UUID tenantId, AcademicRequests.Enrollment request) {
+        String status = request.status() == null ? "ACTIVE" : request.status();
+        List<EnrollmentView> rows = jdbc.query("""
+                INSERT INTO enrollments (student_id, class_section_id, enrolled_on, status)
+                SELECT st.id, cs.id, COALESCE(CAST(? AS DATE), CURRENT_DATE), ?
+                FROM students st
+                JOIN class_sections cs ON cs.id = ? AND cs.tenant_id = st.tenant_id
+                                      AND cs.campus_id = st.campus_id
+                WHERE st.id = ? AND st.tenant_id = ?
+                RETURNING id, student_id, class_section_id, enrolled_on, status,
+                          (SELECT enrollment_no FROM students WHERE id = enrollments.student_id) AS enrollment_no,
+                          (SELECT first_name FROM students WHERE id = enrollments.student_id) AS first_name,
+                          (SELECT last_name FROM students WHERE id = enrollments.student_id) AS last_name,
+                          (SELECT name FROM class_sections WHERE id = enrollments.class_section_id) AS section_name
+                """, (rs, row) -> enrollment(rs.getObject("id", UUID.class),
+                rs.getObject("student_id", UUID.class), rs.getObject("class_section_id", UUID.class),
+                rs.getObject("enrolled_on", LocalDate.class), rs.getString("status"),
+                rs.getString("enrollment_no"), rs.getString("first_name"),
+                rs.getString("last_name"), rs.getString("section_name")),
+                request.enrolledOn(), status, request.classSectionId(), request.studentId(), tenantId);
+        if (rows.isEmpty()) {
+            throw new ResponseStatusException(BAD_REQUEST,
+                    "Student and class section must belong to this tenant and the same campus");
+        }
+        return rows.getFirst();
+    }
+
+    @Transactional
+    public EnrollmentView updateEnrollment(UUID tenantId, UUID id, AcademicRequests.Enrollment request) {
+        boolean changesPlacement = Boolean.TRUE.equals(jdbc.queryForObject("""
+                SELECT EXISTS (
+                    SELECT 1 FROM enrollments e
+                    JOIN students st ON st.id = e.student_id
+                    JOIN class_sections cs ON cs.id = e.class_section_id
+                    JOIN attendance_sessions s ON s.class_section_id = e.class_section_id
+                    JOIN attendance_records ar ON ar.session_id = s.id AND ar.student_id = e.student_id
+                    WHERE st.tenant_id = ? AND cs.tenant_id = ? AND e.id = ?
+                      AND (e.student_id <> ? OR e.class_section_id <> ?)
+                )
+                """, Boolean.class, tenantId, tenantId, id, request.studentId(), request.classSectionId()));
+        if (changesPlacement) {
+            throw new ResponseStatusException(BAD_REQUEST,
+                    "An enrollment with attendance history cannot be moved to another student or section");
+        }
+        List<EnrollmentView> rows = jdbc.query("""
+                UPDATE enrollments e SET student_id = ?, class_section_id = ?,
+                    enrolled_on = COALESCE(CAST(? AS DATE), e.enrolled_on),
+                    status = COALESCE(?, e.status)
+                FROM students owner
+                WHERE owner.id = e.student_id AND owner.tenant_id = ? AND e.id = ?
+                  AND EXISTS (SELECT 1 FROM students st JOIN class_sections cs
+                              ON cs.tenant_id = st.tenant_id AND cs.campus_id = st.campus_id
+                              WHERE st.id = ? AND st.tenant_id = ? AND cs.id = ?)
+                RETURNING e.id, e.student_id, e.class_section_id, e.enrolled_on, e.status,
+                          (SELECT enrollment_no FROM students WHERE id = e.student_id) AS enrollment_no,
+                          (SELECT first_name FROM students WHERE id = e.student_id) AS first_name,
+                          (SELECT last_name FROM students WHERE id = e.student_id) AS last_name,
+                          (SELECT name FROM class_sections WHERE id = e.class_section_id) AS section_name
+                """, (rs, row) -> enrollment(rs.getObject("id", UUID.class),
+                rs.getObject("student_id", UUID.class), rs.getObject("class_section_id", UUID.class),
+                rs.getObject("enrolled_on", LocalDate.class), rs.getString("status"),
+                rs.getString("enrollment_no"), rs.getString("first_name"),
+                rs.getString("last_name"), rs.getString("section_name")),
+                request.studentId(), request.classSectionId(), request.enrolledOn(), request.status(),
+                tenantId, id, request.studentId(), tenantId, request.classSectionId());
+        return requireFound(rows, "Enrollment (student and section must share a tenant and campus)");
+    }
+
+    @Transactional
+    public void deleteEnrollment(UUID tenantId, UUID id) {
+        Boolean hasAttendanceHistory = jdbc.queryForObject("""
+                SELECT EXISTS (
+                    SELECT 1 FROM enrollments e
+                    JOIN students st ON st.id = e.student_id AND st.tenant_id = ?
+                    JOIN class_sections cs ON cs.id = e.class_section_id AND cs.tenant_id = ?
+                    JOIN attendance_sessions s ON s.class_section_id = cs.id
+                    JOIN attendance_records ar ON ar.session_id = s.id AND ar.student_id = st.id
+                    WHERE e.id = ?
+                )
+                """, Boolean.class, tenantId, tenantId, id);
+        if (Boolean.TRUE.equals(hasAttendanceHistory)) {
+            throw new ResponseStatusException(BAD_REQUEST,
+                    "An enrollment with attendance history cannot be deleted; change its status instead");
+        }
+        int deleted = jdbc.update("""
+                DELETE FROM enrollments e USING students st
+                WHERE e.id = ? AND st.id = e.student_id AND st.tenant_id = ?
+                  AND EXISTS (SELECT 1 FROM class_sections cs
+                              WHERE cs.id = e.class_section_id AND cs.tenant_id = ?)
+                """, id, tenantId, tenantId);
+        if (deleted == 0) {
+            throw missing("Enrollment");
+        }
+    }
+
     public List<CampusView> campuses(UUID tenantId) {
         return jdbc.query("""
                 SELECT id, name, timezone FROM campuses WHERE tenant_id = ? ORDER BY name
@@ -234,6 +347,13 @@ public class AcademicService {
         return new CampusView(id, name, timezone);
     }
 
+    private EnrollmentView enrollment(UUID id, UUID studentId, UUID sectionId, LocalDate enrolledOn,
+                                      String status, String enrollmentNo, String firstName,
+                                      String lastName, String sectionName) {
+        return new EnrollmentView(id, studentId, sectionId, enrolledOn, status,
+                enrollmentNo, firstName, lastName, sectionName);
+    }
+
     public record PeriodView(UUID id, String name, LocalDate startsOn, LocalDate endsOn, String status) {
     }
 
@@ -244,5 +364,10 @@ public class AcademicService {
     }
 
     public record CampusView(UUID id, String name, String timezone) {
+    }
+
+    public record EnrollmentView(UUID id, UUID studentId, UUID classSectionId, LocalDate enrolledOn,
+                                 String status, String enrollmentNo, String firstName,
+                                 String lastName, String sectionName) {
     }
 }

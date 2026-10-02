@@ -117,7 +117,7 @@ export default function StaffPage({ session }) {
       {modalOpen && (
         <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setModalOpen(false) }}>
           <section className="student-modal" role="dialog" aria-modal="true" aria-labelledby="staff-title">
-            <div className="modal-heading"><div><h2 id="staff-title">{mode === 'create' ? 'Add teacher' : mode === 'edit' ? 'Edit teacher' : 'Change password'}</h2><p>{mode === 'password' ? 'Use at least 12 characters.' : 'Teacher account details.'}</p></div><button className="icon-button" onClick={() => setModalOpen(false)} aria-label="Close"><X size={18} /></button></div>
+            <div className="modal-heading"><div><h2 id="staff-title">{mode === 'create' ? 'Add teacher' : mode === 'edit' ? 'Edit teacher' : 'Change password'}</h2><p>{mode === 'password' ? 'Use at least 12 characters.' : 'Teacher account details.'}</p></div><button className="icon-button" onClick={() => !saving && setModalOpen(false)} disabled={saving} aria-label="Close"><X size={18} /></button></div>
             <form onSubmit={submit}><div className="student-form-grid">
               {mode !== 'password' && <>
                 <label>Name *<input required maxLength="180" value={form.displayName} onChange={(event) => setForm({ ...form, displayName: event.target.value })} /></label>

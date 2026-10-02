@@ -44,7 +44,7 @@ export default function Sidebar({ active, setActive, open, onClose, session }) {
           ))}
           <section className="nav-group nav-bottom">
             <p>WORKSPACE</p>
-            <button className="nav-link" onClick={() => setActive('Settings')}><Settings2 size={18} /><span>Settings</span></button>
+            <button className={`nav-link ${active === 'Settings' ? 'nav-active' : ''}`} onClick={() => { setActive('Settings'); onClose() }}><Settings2 size={18} /><span>Settings</span></button>
           </section>
         </nav>
         <div className="sidebar-upgrade">

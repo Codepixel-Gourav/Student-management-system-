@@ -29,6 +29,7 @@ Authenticated tenant and roles come only from the verified token. Any legacy `te
 * `/api/students` — tenant-scoped list, detail, create, update, delete. Create bodies include `campusId` and student fields, but not `tenantId`. Medical notes and credentials are not returned.
 * `/api/dashboard/summary` — authenticated user's tenant summary.
 * `/api/academic-periods`, `/api/courses`, `/api/class-sections` — tenant-scoped CRUD.
+* `/api/enrollments` — tenant-scoped enrollment CRUD. Students and sections must belong to the same tenant and campus; attendance history prevents moving or deleting an enrollment.
 * `/api/settings/campuses` — tenant-scoped CRUD.
 * `/api/staff` — school-admin-only teacher account CRUD. Creation requires a 12-character minimum initial password; password changes use `PUT /api/staff/{id}/password`. Responses expose only account ID, email, display name, status, and timestamps; password hashes and MFA secrets are never selected or returned.
 * `/api/attendance/sessions` — tenant-scoped session CRUD. Section, optional course, and optional teacher references are verified against the authenticated tenant; assigned teachers must have the `TEACHER` role.

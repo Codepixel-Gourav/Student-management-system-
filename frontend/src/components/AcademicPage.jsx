@@ -58,7 +58,7 @@ function displayValue(field, value, campuses, periods) {
   return value || '—'
 }
 
-export default function AcademicPage({ section = 'periods', session }) {
+export default function AcademicPage({ section = 'periods', session, onNavigate }) {
   const [activeSection, setActiveSection] = useState(section)
   const config = RESOURCES[activeSection]
   const [records, setRecords] = useState([])
@@ -165,11 +165,13 @@ export default function AcademicPage({ section = 'periods', session }) {
         {canManage && <button className="button-primary" onClick={openNew}><Plus size={16} /> Add {config.title.replace(/s$/, '').toLowerCase()}</button>}
       </div>
       {section !== 'campuses' && <div className="module-tabs" role="tablist" aria-label="Academic sections">
-        {[['periods', 'Academic periods'], ['courses', 'Courses'], ['sections', 'Class sections']].map(([key, label]) => (
+        {[['periods', 'Academic periods'], ['courses', 'Courses'], ['sections', 'Class sections'], ['enrollments', 'Enrollments']].map(([key, label]) => (
           <button key={key} role="tab" aria-selected={activeSection === key} className={activeSection === key ? 'module-tab active' : 'module-tab'} onClick={() => {
-            setActiveSection(key)
-            setEditing(null)
-            if (window.location.pathname !== `/academics/${key}`) window.history.pushState({}, '', `/academics/${key}`)
+            if (key === 'enrollments') {
+              onNavigate('Enrollments')
+              return
+            }
+            onNavigate(`Academic:${key}`)
           }}>{label}</button>
         ))}
       </div>}

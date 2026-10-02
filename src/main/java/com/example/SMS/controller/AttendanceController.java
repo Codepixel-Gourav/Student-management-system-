@@ -24,13 +24,13 @@ public class AttendanceController {
 
     @GetMapping("/sessions")
     public List<AttendanceService.SessionView> sessions(@AuthenticationPrincipal AuthenticatedUser user) {
-        return service.listSessions(user.tenantId());
+        return service.listSessions(user);
     }
 
     @GetMapping("/sessions/{id}")
     public AttendanceService.SessionView session(
             @AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID id) {
-        return service.getSession(user.tenantId(), id);
+        return service.getSession(user, id);
     }
 
     @PostMapping("/sessions")
@@ -59,13 +59,13 @@ public class AttendanceController {
     @GetMapping("/sessions/{sessionId}/records")
     public List<AttendanceService.RecordView> records(
             @AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID sessionId) {
-        return service.records(user.tenantId(), sessionId);
+        return service.records(user, sessionId);
     }
 
     @GetMapping("/sessions/{sessionId}/students")
     public List<AttendanceService.AttendanceStudentView> eligibleStudents(
             @AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID sessionId) {
-        return service.eligibleStudents(user.tenantId(), sessionId);
+        return service.eligibleStudents(user, sessionId);
     }
 
     @PostMapping("/sessions/{sessionId}/records")
@@ -74,13 +74,13 @@ public class AttendanceController {
     public AttendanceService.RecordView createRecord(
             @AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID sessionId,
             @Valid @RequestBody AttendanceRequests.Record request) {
-        return service.createRecord(user.tenantId(), sessionId, request);
+        return service.createRecord(user, sessionId, request);
     }
 
     @GetMapping("/records/{id}")
     public AttendanceService.RecordView record(
             @AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID id) {
-        return service.getRecord(user.tenantId(), id);
+        return service.getRecord(user, id);
     }
 
     @PutMapping("/records/{id}")
@@ -88,7 +88,7 @@ public class AttendanceController {
     public AttendanceService.RecordView updateRecord(
             @AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID id,
             @Valid @RequestBody AttendanceRequests.RecordUpdate request) {
-        return service.updateRecord(user.tenantId(), id, request.status());
+        return service.updateRecord(user, id, request.status());
     }
 
     @DeleteMapping("/records/{id}")

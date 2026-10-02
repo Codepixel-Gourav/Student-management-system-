@@ -104,12 +104,34 @@ public class StaffService {
         if (userId.equals(actorId)) {
             throw new ResponseStatusException(CONFLICT, "You cannot delete your own account");
         }
+        Boolean exists = jdbc.queryForObject("""
+                SELECT EXISTS (
+                    SELECT 1 FROM app_users u
+                    JOIN user_roles ur ON ur.user_id = u.id
+                    JOIN roles r ON r.id = ur.role_id AND r.code = 'TEACHER'
+                    WHERE u.tenant_id = ? AND u.id = ?
+                )
+                """, Boolean.class, tenantId, userId);
+        if (!Boolean.TRUE.equals(exists)) {
+            throw missing();
+        }
+        Boolean referenced = jdbc.queryForObject("""
+                SELECT EXISTS (SELECT 1 FROM students WHERE user_id = ?)
+                    OR EXISTS (SELECT 1 FROM assignments WHERE teacher_user_id = ?)
+                    OR EXISTS (SELECT 1 FROM timetable_slots WHERE teacher_user_id = ?)
+                    OR EXISTS (SELECT 1 FROM leave_approvals WHERE approver_user_id = ?)
+                    OR EXISTS (SELECT 1 FROM announcements WHERE author_user_id = ?)
+                    OR EXISTS (SELECT 1 FROM messages WHERE sender_user_id = ?)
+                """, Boolean.class, userId, userId, userId, userId, userId, userId);
+        if (Boolean.TRUE.equals(referenced)) {
+            throw new ResponseStatusException(CONFLICT,
+                    "Teacher is referenced by existing records. Disable the account instead of deleting it.");
+        }
         int deleted = jdbc.update("""
                 DELETE FROM app_users u
                 WHERE u.tenant_id = ? AND u.id = ?
                   AND EXISTS (SELECT 1 FROM user_roles ur JOIN roles r ON r.id = ur.role_id
                               WHERE ur.user_id = u.id AND r.code = 'TEACHER')
-                  AND NOT EXISTS (SELECT 1 FROM students st WHERE st.user_id = u.id)
                 """, tenantId, userId);
         if (deleted == 0) {
             throw missing();

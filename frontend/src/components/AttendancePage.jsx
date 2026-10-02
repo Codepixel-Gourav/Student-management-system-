@@ -17,12 +17,14 @@ export default function AttendancePage({ session }) {
   const [sessions, setSessions] = useState([])
   const [records, setRecords] = useState([])
   const [eligibleStudents, setEligibleStudents] = useState([])
+  const [recordsError, setRecordsError] = useState('')
   const [leaveRequests, setLeaveRequests] = useState([])
   const [sections, setSections] = useState([])
   const [courses, setCourses] = useState([])
   const [teachers, setTeachers] = useState([])
   const [students, setStudents] = useState([])
   const [selectedSession, setSelectedSession] = useState(null)
+  const [recordsLoading, setRecordsLoading] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [modal, setModal] = useState('')
@@ -74,6 +76,10 @@ export default function AttendancePage({ session }) {
 
   const viewRecords = async (row) => {
     setSelectedSession(row)
+    setRecords([])
+    setEligibleStudents([])
+    setRecordsError('')
+    setRecordsLoading(true)
     try {
       const [sessionRecords, eligible] = await Promise.all([
         attendanceApi.records(row.id),
@@ -83,7 +89,10 @@ export default function AttendancePage({ session }) {
       setEligibleStudents(eligible)
       setRecordForm({ studentId: '', status: 'PRESENT' })
     } catch (loadError) {
+      setRecordsError(loadError.message)
       toast.error(loadError.message)
+    } finally {
+      setRecordsLoading(false)
     }
   }
 
@@ -223,14 +232,16 @@ export default function AttendancePage({ session }) {
         </section>
         {selectedSession && <section className="panel records-panel attendance-records-panel">
           <div className="panel-heading"><div><h2>Attendance records</h2><p>{sectionName(selectedSession.classSectionId)} · {new Date(selectedSession.startsAt).toLocaleString()}</p></div><button className="icon-button" onClick={() => setSelectedSession(null)} aria-label="Close attendance records"><X size={17} /></button></div>
+          {recordsError && <div className="records-error" role="alert">{recordsError}<button className="button-secondary" onClick={() => viewRecords(selectedSession)}>Retry</button></div>}
           {(canManage || session.roles?.includes('TEACHER')) && <form className="inline-record-form" onSubmit={markAttendance}>
             <label>Student<select required value={recordForm.studentId} onChange={(event) => setRecordForm({ ...recordForm, studentId: event.target.value })}><option value="">Select student</option>{eligibleStudents.filter((student) => !records.some((record) => record.studentId === student.id)).map((student) => <option key={student.id} value={student.id}>{student.firstName} {student.lastName} · {student.enrollmentNo}</option>)}</select></label>
             <label>Status<select value={recordForm.status} onChange={(event) => setRecordForm({ ...recordForm, status: event.target.value })}>{ATTENDANCE_STATES.map((status) => <option key={status}>{status}</option>)}</select></label>
             <button className="button-primary"><Check size={15} /> Mark attendance</button>
           </form>}
           <div className="table-scroll records-table-scroll"><table className="student-table"><thead><tr><th>STUDENT</th><th>STATUS</th><th>MARKED AT</th>{canManage && <th>ACTIONS</th>}</tr></thead><tbody>
+            {recordsLoading && <tr><td colSpan={canManage ? 4 : 3} className="empty-state">Loading attendance records…</td></tr>}
             {records.map((record) => <tr key={record.id}><td>{nameOfStudent(record.studentId)}</td><td>{canManage || session.roles?.includes('TEACHER') ? <select aria-label={`Attendance status for ${nameOfStudent(record.studentId)}`} value={record.status} onChange={(event) => changeRecordStatus(record, event.target.value)}>{ATTENDANCE_STATES.map((status) => <option key={status}>{status}</option>)}</select> : record.status}</td><td>{record.markedAt ? new Date(record.markedAt).toLocaleString() : '—'}</td>{canManage && <td><button className="icon-button" onClick={() => remove('record', record)} aria-label="Delete attendance record"><Trash2 size={16} /></button></td>}</tr>)}
-            {records.length === 0 && <tr><td colSpan={canManage ? 4 : 3} className="empty-state">No records marked for this session.</td></tr>}
+            {!recordsLoading && records.length === 0 && <tr><td colSpan={canManage ? 4 : 3} className="empty-state">No records marked for this session.</td></tr>}
           </tbody></table></div>
           {selectedSection && <p className="form-hint">Only students actively enrolled in {selectedSection.name} are selectable. Edit a marked record to change its attendance status.</p>}
         </section>}
@@ -243,7 +254,7 @@ export default function AttendancePage({ session }) {
 
       {modal && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setModal('') }}>
         <section className="student-modal" role="dialog" aria-modal="true" aria-labelledby="attendance-form-title">
-          <div className="modal-heading"><div><h2 id="attendance-form-title">{modal === 'session' ? `${editing ? 'Edit' : 'Create'} attendance session` : `${editing ? 'Edit' : 'Create'} leave request`}</h2><p>Fields marked * are required.</p></div><button className="icon-button" onClick={() => setModal('')} aria-label="Close"><X size={18} /></button></div>
+          <div className="modal-heading"><div><h2 id="attendance-form-title">{modal === 'session' ? `${editing ? 'Edit' : 'Create'} attendance session` : `${editing ? 'Edit' : 'Create'} leave request`}</h2><p>Fields marked * are required.</p></div><button className="icon-button" onClick={() => !saving && setModal('')} disabled={saving} aria-label="Close"><X size={18} /></button></div>
           {modal === 'session' ? <form onSubmit={submitSession}><div className="student-form-grid">
             <label>Class section *<select required value={sessionForm.classSectionId} onChange={(event) => setSessionForm({ ...sessionForm, classSectionId: event.target.value })}><option value="">Select section</option>{sections.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
             <label>Course<select value={sessionForm.courseId} onChange={(event) => setSessionForm({ ...sessionForm, courseId: event.target.value })}><option value="">None</option>{courses.map((row) => <option key={row.id} value={row.id}>{row.code} · {row.name}</option>)}</select></label>

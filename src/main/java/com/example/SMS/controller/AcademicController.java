@@ -4,6 +4,7 @@ import com.example.SMS.dto.AcademicRequests;
 import com.example.SMS.security.AuthenticatedUser;
 import com.example.SMS.service.AcademicService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -97,6 +98,34 @@ public class AcademicController {
     @PreAuthorize("hasAnyRole('SCHOOL_ADMIN', 'SUPER_ADMIN')")
     public void deleteSection(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID id) {
         service.deleteSection(user.tenantId(), id);
+    }
+
+    @GetMapping("/enrollments")
+    public List<AcademicService.EnrollmentView> enrollments(@AuthenticationPrincipal AuthenticatedUser user) {
+        return service.enrollments(user.tenantId());
+    }
+
+    @PostMapping("/enrollments")
+    @PreAuthorize("hasAnyRole('SCHOOL_ADMIN', 'SUPER_ADMIN')")
+    @ResponseStatus(HttpStatus.CREATED)
+    public AcademicService.EnrollmentView createEnrollment(
+            @AuthenticationPrincipal AuthenticatedUser user,
+            @Valid @RequestBody AcademicRequests.Enrollment request) {
+        return service.createEnrollment(user.tenantId(), request);
+    }
+
+    @PutMapping("/enrollments/{id}")
+    @PreAuthorize("hasAnyRole('SCHOOL_ADMIN', 'SUPER_ADMIN')")
+    public AcademicService.EnrollmentView updateEnrollment(
+            @AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID id,
+            @Valid @RequestBody AcademicRequests.Enrollment request) {
+        return service.updateEnrollment(user.tenantId(), id, request);
+    }
+
+    @DeleteMapping("/enrollments/{id}")
+    @PreAuthorize("hasAnyRole('SCHOOL_ADMIN', 'SUPER_ADMIN')")
+    public void deleteEnrollment(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID id) {
+        service.deleteEnrollment(user.tenantId(), id);
     }
 
     @GetMapping("/settings/campuses")

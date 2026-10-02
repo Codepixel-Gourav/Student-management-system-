@@ -11,13 +11,14 @@ import AcademicPage from './components/AcademicPage.jsx'
 import StaffPage from './components/StaffPage.jsx'
 import AttendancePage from './components/AttendancePage.jsx'
 import FinancePage from './components/FinancePage.jsx'
+import EnrollmentPage from './components/EnrollmentPage.jsx'
 import { clearSession, getSession } from './services/api.js'
 import { getDashboardSummary, getStudents } from './services/studentService.js'
 import { attendanceApi } from './services/attendanceService.js'
 
 function academicSectionFromPath() {
   const segment = window.location.pathname.split('/').filter(Boolean).at(-1)
-  return ['periods', 'courses', 'sections'].includes(segment) ? segment : 'periods'
+  return ['periods', 'courses', 'sections', 'enrollments'].includes(segment) ? segment : 'periods'
 }
 
 function Topbar({ active, query, setQuery, dark, setDark, setMobileOpen, session, onLogout }) {
@@ -157,14 +158,10 @@ function Dashboard({ query, navigate }) {
         </section>
       </div>
 
-      <div className="bottom-grid">
+      <div className="bottom-grid bottom-grid-single">
         <section className="panel students-panel">
           <div className="panel-heading"><div><h2>Recently added students</h2><p>Latest records from the student database</p></div><button className="text-action" onClick={() => navigate('Students')}>Manage students</button></div>
           <RecentStudents query={query} onViewAll={() => navigate('Students')} />
-        </section>
-        <section className="panel activity-panel">
-          <div className="panel-heading"><div><h2>Recent activity</h2><p>System activity</p></div></div>
-          <div className="module-placeholder"><Activity size={25} /><strong>Activity feed unavailable</strong><span>Activity tracking has not been implemented for this application.</span></div>
         </section>
       </div>
       <footer className="page-footer"><span>Student Management System</span><span><span className="footer-dot" /> {error ? 'Dashboard data unavailable' : 'Connected to student API'}</span></footer>
@@ -190,12 +187,16 @@ function App() {
     return 'Dashboard'
   }
   const [active, setActive] = useState(pageForPath)
+  const [routePath, setRoutePath] = useState(window.location.pathname)
   const [query, setQuery] = useState('')
   const [dark, setDark] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
   useEffect(() => {
-    const handlePopState = () => setActive(pageForPath())
+    const handlePopState = () => {
+      setActive(pageForPath())
+      setRoutePath(window.location.pathname)
+    }
     const handleUnauthorized = () => setSession(null)
     window.addEventListener('popstate', handlePopState)
     window.addEventListener('sms:unauthorized', handleUnauthorized)
@@ -235,21 +236,25 @@ function App() {
       'Fees & billing': '/fees',
       'Fees': '/fees',
     }
-    const path = paths[page]
+    const academicPath = page.startsWith('Academic:') ? `/academics/${page.slice('Academic:'.length)}` : null
+    const path = academicPath ?? (page === 'Enrollments' ? '/academics/enrollments' : paths[page])
     if (!path) return
     if (window.location.pathname !== path) window.history.pushState({}, '', path)
-    setActive(page)
+    setRoutePath(path)
+    setActive(academicPath || page === 'Enrollments' ? 'Academics' : page)
     setMobileOpen(false)
   }
 
   return (
     <div className={`app-shell ${dark ? 'dark-theme' : ''}`}>
       <Sidebar active={active} setActive={navigate} open={mobileOpen} onClose={() => setMobileOpen(false)} session={session} />
-      <main className="main-area">
+      <main className="main-area" data-route={routePath}>
         <Topbar active={active} query={query} setQuery={setQuery} dark={dark} setDark={setDark} setMobileOpen={setMobileOpen} session={session} onLogout={handleLogout} />
         {['Dashboard', 'Analytics'].includes(active) && <Dashboard query={query} navigate={navigate} />}
         {active === 'Students' && <StudentsPage query={query} setQuery={setQuery} session={session} />}
-        {active === 'Academics' && <AcademicPage section={academicSectionFromPath()} session={session} />}
+        {active === 'Academics' && (academicSectionFromPath() === 'enrollments'
+          ? <EnrollmentPage session={session} onNavigate={navigate} />
+          : <AcademicPage section={academicSectionFromPath()} session={session} onNavigate={navigate} />)}
         {active === 'Settings' && <AcademicPage section="campuses" session={session} />}
         {active === 'Teachers' && (isAdmin ? <StaffPage session={session} /> : <RestrictedPage title="Teachers" />)}
         {active === 'Attendance' && <AttendancePage session={session} />}

@@ -86,4 +86,5 @@ button{cursor:pointer}
 .dark-theme .selected-record-row{background:#282739}
 .attendance-records-panel{margin-top:14px}
 .records-table-scroll .student-table select{height:29px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--ink);font-size:10px}
+.bottom-grid-single{grid-template-columns:1fr}
 @media(max-width:600px){.inline-record-form{align-items:stretch;flex-direction:column}.inline-record-form label,.inline-record-form select{width:100%}.student-form-grid .wide-field{grid-column:auto}}

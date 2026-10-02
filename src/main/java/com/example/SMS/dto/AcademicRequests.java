@@ -36,6 +36,13 @@ public final class AcademicRequests {
             @Size(max = 80) String room) {
     }
 
+    public record Enrollment(
+            @NotNull UUID studentId,
+            @NotNull UUID classSectionId,
+            LocalDate enrolledOn,
+            @Pattern(regexp = "ACTIVE|COMPLETED|WITHDRAWN") String status) {
+    }
+
     public record Campus(
             @NotBlank @Size(max = 180) String name,
             @NotBlank @Size(max = 80) String timezone) {

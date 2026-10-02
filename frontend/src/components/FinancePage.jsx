@@ -5,8 +5,6 @@ import { financeApi } from '../services/financeService.js'
 import { getStudents } from '../services/studentService.js'
 
 const EMPTY_INVOICE = { studentId: '', invoiceNo: '', currency: 'USD', subtotal: '', penalty: '0', dueOn: '' }
-const PAYMENT_STATES = ['INITIATED', 'PENDING', 'SUCCEEDED', 'FAILED', 'REFUNDED']
-
 function paymentTransitions(status) {
   if (status === 'INITIATED') return ['PENDING', 'SUCCEEDED', 'FAILED']
   if (status === 'PENDING') return ['SUCCEEDED', 'FAILED']
@@ -89,7 +87,7 @@ export default function FinancePage() {
       invoiceId: payment.invoiceId,
       amount: String(payment.amount),
       currency: payment.currency,
-      status: payment.status,
+      status: paymentTransitions(payment.status)[0] ?? payment.status,
       providerReference: payment.providerReference ?? '',
     })
     setModal('payment-edit')
@@ -207,7 +205,7 @@ export default function FinancePage() {
 
       {modal && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setModal('') }}>
         <section className="student-modal" role="dialog" aria-modal="true" aria-labelledby="finance-form-title">
-          <div className="modal-heading"><div><h2 id="finance-form-title">{modal === 'invoice' ? `${editing ? 'Edit' : 'Create'} invoice` : modal === 'payment-edit' ? 'Update payment status' : 'Record payment'}</h2><p>Transactions are recorded manually; no payment provider is connected.</p></div><button className="icon-button" onClick={() => setModal('')} aria-label="Close"><X size={18} /></button></div>
+          <div className="modal-heading"><div><h2 id="finance-form-title">{modal === 'invoice' ? `${editing ? 'Edit' : 'Create'} invoice` : modal === 'payment-edit' ? 'Update payment status' : 'Record payment'}</h2><p>Transactions are recorded manually; no payment provider is connected.</p></div><button className="icon-button" onClick={() => !saving && setModal('')} disabled={saving} aria-label="Close"><X size={18} /></button></div>
           {modal === 'invoice' ? <form onSubmit={submitInvoice}><div className="student-form-grid">
             <label>Student *<select required value={invoiceForm.studentId} onChange={(event) => setInvoiceForm({ ...invoiceForm, studentId: event.target.value })}><option value="">Select student</option>{students.map((row) => <option key={row.id} value={row.id}>{row.firstName} {row.lastName} · {row.enrollmentNo}</option>)}</select></label>
             <label>Invoice number *<input required maxLength="60" value={invoiceForm.invoiceNo} onChange={(event) => setInvoiceForm({ ...invoiceForm, invoiceNo: event.target.value })} /></label>
