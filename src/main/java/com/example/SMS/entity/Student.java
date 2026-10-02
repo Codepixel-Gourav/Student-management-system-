@@ -1,5 +1,6 @@
 package com.example.SMS.entity;
-
+import com.example.SMS.entity.Student;
+import com.example.SMS.service.StudentService;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
