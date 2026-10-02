@@ -1,6 +1,7 @@
 package com.example.SMS.controller;
 
 import com.example.SMS.dto.CreateStudentRequest;
+import com.example.SMS.dto.UpdateStudentRequest;
 import com.example.SMS.entity.Student;
 import com.example.SMS.service.StudentService;
 import jakarta.validation.Valid;
@@ -26,8 +27,10 @@ public class StudentController {
             @RequestParam UUID tenantId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "lastName") String sortBy) {
-        return studentService.getStudents(tenantId, page, size, sortBy);
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "DESC") String direction,
+            @RequestParam(defaultValue = "") String search) {
+        return studentService.getStudents(tenantId, page, size, sortBy, direction, search);
     }
 
     @PostMapping
@@ -43,6 +46,14 @@ public class StudentController {
     @GetMapping("/{id}")
     public Student getStudent(@RequestParam UUID tenantId, @PathVariable UUID id) {
         return studentService.getStudent(tenantId, id);
+    }
+
+    @PutMapping("/{id}")
+    public Student updateStudent(
+            @RequestParam UUID tenantId,
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateStudentRequest request) {
+        return studentService.updateStudent(tenantId, id, request);
     }
 
     @DeleteMapping("/{id}")

@@ -23,3 +23,40 @@ button{cursor:pointer}
 @media(max-width:1150px){.sidebar{width:220px}.topbar{padding:0 24px}.page-content{padding:27px 24px 16px}.middle-grid,.bottom-grid{grid-template-columns:minmax(0,1.5fr) minmax(250px,1fr)}.attendance-ring{width:120px;height:120px}.attendance-ring:before{width:93px;height:93px}.attendance-ring strong{font-size:16px}.attendance-summary{justify-content:space-between}}
 @media(max-width:900px){.sidebar{position:fixed;left:-260px;transition:left .24s ease;box-shadow:12px 0 35px #12152b14;width:248px}.sidebar-open{left:0}.sidebar-backdrop{display:block;position:fixed;inset:0;background:#16182a55;border:0;z-index:9}.mobile-close{display:block}.mobile-menu{display:grid}.topbar-left{gap:13px}.middle-grid,.bottom-grid{grid-template-columns:1fr}.attendance-summary{justify-content:center;gap:50px;min-height:210px}.attendance-ring{width:146px;height:146px}.attendance-ring:before{width:113px;height:113px}.attendance-panel{min-height:285px}.metrics-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.activity-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.activity-item{padding-bottom:10px}.activity-item:not(:last-child):after{display:none}.activity-item time{display:none}}
 @media(max-width:600px){.topbar{height:58px;padding:0 16px}.topbar-actions{gap:12px}.global-search{height:33px;width:36px;border:none;padding:0;justify-content:center}.global-search input,.global-search kbd{display:none}.profile-label,.profile-button>svg,.topbar-divider{display:none}.profile-avatar{height:31px;width:31px}.page-content{padding:23px 15px 14px}.welcome-row{align-items:flex-start;gap:14px;flex-direction:column;margin-bottom:19px}.welcome-row h1{font-size:22px}.welcome-actions{width:100%;gap:7px}.date-label{margin-right:auto;font-size:9px}.button-secondary,.button-primary{height:33px;padding:0 9px;font-size:9px}.metrics-grid{gap:9px}.metric-card{padding:12px}.metric-value{font-size:20px}.metric-title{margin-top:10px}.metric-bottom{font-size:8px;gap:4px}.middle-grid,.bottom-grid{gap:10px;margin-bottom:10px}.panel{padding:14px 13px 12px}.chart-wrap{height:180px;margin-left:-4px}.chart-legend{gap:9px}.chart-legend strong{font-size:12px}.attendance-summary{gap:22px;min-height:190px}.attendance-ring{width:130px;height:130px}.attendance-ring:before{width:100px;height:100px}.attendance-numbers{min-width:92px;gap:13px}.attendance-foot>span{font-size:8px}.student-table th:first-child,.student-table td:first-child{padding-left:13px}.table-scroll{margin-left:-13px;margin-right:-13px}.activity-list{grid-template-columns:1fr;gap:0}.activity-item{padding-bottom:15px}.activity-item:not(:last-child):after{display:block}.activity-item time{display:block}.page-footer{font-size:8px}.page-footer button{margin-left:2px}.breadcrumbs{font-size:11px}}
+
+.profile-static{display:flex;align-items:center;gap:9px;color:var(--ink)}
+.period-label{font-size:10px;color:var(--muted);padding:7px 10px;border:1px solid var(--border);border-radius:6px}
+.text-action{border:0;background:none;color:#6157cf;font-size:10px;font-weight:650;padding:5px}
+.module-placeholder{min-height:205px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;text-align:center;color:var(--muted);padding:20px}
+.module-placeholder svg{color:#8980db}
+.module-placeholder strong{font-size:12px;color:var(--ink)}
+.module-placeholder span{font-size:10px;line-height:1.5;max-width:240px}
+.records-panel{padding:18px}
+.records-toolbar,.records-pagination{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.records-toolbar>strong{font-size:12px}
+.records-search{height:35px;width:min(270px,100%);display:flex;align-items:center;gap:8px;padding:0 10px;border:1px solid var(--border);border-radius:7px;color:var(--muted)}
+.records-search input{width:100%;border:0;outline:0;background:transparent;color:var(--ink);font-size:11px}
+.records-table-scroll{margin:16px 0 0}
+.records-table-scroll .student-table{min-width:720px}
+.records-table-scroll .student-table th:first-child,.records-table-scroll .student-table td:first-child{padding-left:12px}
+.record-actions{display:flex;align-items:center;gap:4px}
+.record-actions .icon-button{width:30px;height:30px;border-radius:6px}
+.record-actions .icon-button:hover{background:#f1efff;color:#5a4fc9}
+.records-pagination{border-top:1px solid var(--border);margin-top:10px;padding-top:13px;color:var(--muted);font-size:10px}
+.records-pagination>div{display:flex;gap:7px}
+.records-pagination .button-secondary{height:30px}
+.records-pagination button:disabled{opacity:.45;cursor:not-allowed}
+.records-error{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0;color:#b44747;background:#fff2f0;border:1px solid #f4d1cc;border-radius:7px;padding:10px 12px;font-size:11px}
+.modal-backdrop{position:fixed;inset:0;z-index:30;background:#15172b80;display:grid;place-items:center;padding:16px}
+.student-modal{width:min(620px,100%);max-height:calc(100vh - 32px);overflow:auto;background:var(--surface);color:var(--ink);border:1px solid var(--border);border-radius:12px;padding:22px;box-shadow:0 18px 60px #10132640}
+.modal-heading{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px}
+.modal-heading h2{font-size:17px;margin:0}
+.modal-heading p{font-size:10px;color:var(--muted);margin:6px 0 0}
+.student-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.student-form-grid label{display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:10px}
+.student-form-grid input,.student-form-grid select{height:36px;width:100%;padding:0 9px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--ink);font-size:11px}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+.unavailable-panel{padding:24px}
+.unavailable-panel h1{font-size:20px;margin:0 0 8px}
+.unavailable-panel p{color:var(--muted);font-size:12px}
+@media(max-width:600px){.student-form-grid{grid-template-columns:1fr}.student-modal{padding:16px}.records-toolbar{align-items:flex-start;flex-direction:column}.records-search{width:100%}.records-error{align-items:flex-start;flex-direction:column}}

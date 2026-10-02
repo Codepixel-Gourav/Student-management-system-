@@ -1,21 +1,6 @@
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 
-const data = [
-  { month: 'Jan', current: 2830, previous: 2520 },
-  { month: 'Feb', current: 3020, previous: 2600 },
-  { month: 'Mar', current: 2940, previous: 2710 },
-  { month: 'Apr', current: 3290, previous: 2830 },
-  { month: 'May', current: 3160, previous: 2760 },
-  { month: 'Jun', current: 3590, previous: 2950 },
-  { month: 'Jul', current: 3740, previous: 3050 },
-  { month: 'Aug', current: 3860, previous: 3190 },
-  { month: 'Sep', current: 3720, previous: 3240 },
-  { month: 'Oct', current: 4010, previous: 3410 },
-  { month: 'Nov', current: 4230, previous: 3520 },
-  { month: 'Dec', current: 4380, previous: 3610 },
-]
-
-export default function EnrollmentChart() {
+export default function EnrollmentChart({ data }) {
   return (
     <div className="chart-wrap">
       <ResponsiveContainer width="100%" height="100%">

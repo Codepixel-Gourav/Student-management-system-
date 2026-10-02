@@ -2,21 +2,24 @@ import { useEffect, useState } from 'react'
 import { ArrowUpRight } from 'lucide-react'
 import { getStudents } from '../services/studentService.js'
 
-export default function RecentStudents({ query }) {
+export default function RecentStudents({ query, onViewAll }) {
   const [students, setStudents] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
     const controller = new AbortController()
+    setLoading(true)
+    setError('')
 
     getStudents({
       tenantId: import.meta.env.VITE_TENANT_ID,
-      size: 100,
+      size: 5,
       sortBy: 'createdAt',
+      search: query,
       signal: controller.signal,
     })
-      .then(setStudents)
+      .then((result) => setStudents(result.content))
       .catch((loadError) => {
         if (loadError.name !== 'AbortError') setError(loadError.message)
       })
@@ -25,18 +28,9 @@ export default function RecentStudents({ query }) {
       })
 
     return () => controller.abort()
-  }, [])
+  }, [query])
 
   const filtered = students
-    .slice()
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    .filter((student) => {
-      const name = `${student.firstName} ${student.lastName}`
-      return `${name} ${student.email ?? ''} ${student.enrollmentNo} ${student.department ?? ''}`
-        .toLowerCase()
-        .includes(query.toLowerCase())
-    })
-    .slice(0, 5)
 
   return (
     <div className="table-scroll">
@@ -66,7 +60,7 @@ export default function RecentStudents({ query }) {
           )}
         </tbody>
       </table>
-      <button className="view-all">View all students <ArrowUpRight size={15} /></button>
+      <button className="view-all" onClick={onViewAll}>View all students <ArrowUpRight size={15} /></button>
     </div>
   )
 }

@@ -69,26 +69,29 @@ docker compose up -d postgres redis
 The server listens on `http://localhost:8080`; health probes are at `/actuator/health`. Student API examples:
 
 ```text
-GET    /api/students?tenantId=<uuid>&page=0&size=20&sortBy=lastName
+GET    /api/students?tenantId=<uuid>&page=0&size=20&sortBy=createdAt&direction=DESC&search=
 GET    /api/students/<student-uuid>?tenantId=<uuid>
 POST   /api/students
+PUT    /api/students/<student-uuid>?tenantId=<uuid>
 DELETE /api/students/<student-uuid>?tenantId=<uuid>
+GET    /api/dashboard/summary?tenantId=<uuid>
 ```
 
-`POST` requires `tenantId`, `campusId`, `enrollmentNo`, `firstName`, and `lastName`; optional fields include `email`, `department`, `enrollmentYear`, and `dateOfBirth`.
+`POST` requires `tenantId`, `campusId`, `enrollmentNo`, `firstName`, and `lastName`; optional fields include `email`, `department`, `enrollmentYear`, and `dateOfBirth`. `PUT` accepts the editable student fields and optional `admissionStatus`.
 
 ## 3. Frontend structure and run guide
 
-The Vite app is in `frontend/`:
+The Vite app is in `frontend/`. The Dashboard and Students pages use the Spring API; the Teachers, Analytics, Academics, Attendance, Fees, and Settings areas are not implemented yet.
 
 ```text
 src/
   App.jsx
-  components/  Sidebar, MetricCard, EnrollmentChart, RecentStudents
+  components/  Sidebar, MetricCard, EnrollmentChart, RecentStudents, StudentsPage
+  services/    studentService.js
   styles.css
 ```
 
-It includes responsive navigation, dashboard metric cards, enrollment visualization, attendance summary, a searchable/paginated-ready student table layout, activity feed, light/dark toggle and action toasts. Dashboard chart, metric and activity values are demo fixtures and should be replaced with tenant-scoped API queries plus loading/error/empty states. The Vite dev server proxies `/api` to the Spring Boot server.
+It includes responsive dashboard navigation, tenant-scoped student metrics and enrollment chart, searchable/paginated student records, create/edit/delete actions, CSV export, and loading/error/empty states. The attendance and activity panels clearly indicate that their APIs are not available yet. The Vite dev server proxies `/api` to Spring Boot; the integrated Docker build embeds the Vite bundle in Spring Boot static resources and uses `/api` on the same origin.
 
 ```powershell
 cd frontend
@@ -96,6 +99,8 @@ npm install
 npm run dev
 npm run build
 ```
+
+For an integrated Render Docker deployment, provide `VITE_TENANT_ID` and `VITE_CAMPUS_ID` as Docker build arguments. These values are included in the client bundle and are public; never use them as credentials or authorization. Database environment variables remain runtime variables for Spring Boot.
 
 For the production client, split each domain into route-level pages, use a typed API client, server-side pagination/sorting, React Query cache invalidation, accessible form validation, and a tested authentication flow. Keep refresh credentials in secure, HttpOnly, SameSite cookies; do not persist access or refresh tokens in local storage.
 

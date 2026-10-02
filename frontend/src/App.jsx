@@ -1,102 +1,193 @@
-import { useMemo, useState } from 'react'
-import { motion } from 'framer-motion'
-import { Activity, Bell, BookOpen, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, CircleDollarSign, Download, GraduationCap, Menu, Moon, Plus, Search, Sun, Users, UserRoundPlus } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Activity, BookOpen, CalendarDays, Download, GraduationCap, Menu, Moon, Plus, Search, Sun, Users } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Sidebar from './components/Sidebar.jsx'
 import MetricCard from './components/MetricCard.jsx'
 import EnrollmentChart from './components/EnrollmentChart.jsx'
 import RecentStudents from './components/RecentStudents.jsx'
+import StudentsPage from './components/StudentsPage.jsx'
+import { getDashboardSummary, getStudents } from './services/studentService.js'
 
-const activity = [
-  { title: 'New student enrollment', detail: 'Ava Thompson · Grade 10', time: '12 min ago', tone: 'purple', icon: UserRoundPlus },
-  { title: 'Fee payment received', detail: 'Invoice #INV-2024-0312', time: '38 min ago', tone: 'green', icon: CircleDollarSign },
-  { title: 'Attendance report ready', detail: 'Grade 9 · Period 3', time: '1 hour ago', tone: 'blue', icon: CalendarDays },
-]
-
-function Topbar({ query, setQuery, dark, setDark, setMobileOpen }) {
+function Topbar({ active, query, setQuery, dark, setDark, setMobileOpen }) {
   return (
     <header className="topbar">
       <div className="topbar-left">
         <button className="icon-button mobile-menu" onClick={() => setMobileOpen(true)} aria-label="Open menu"><Menu size={20} /></button>
-        <div className="breadcrumbs"><span>Pages</span><span className="crumb-slash">/</span><strong>Dashboard</strong></div>
+        <div className="breadcrumbs"><span>Pages</span><span className="crumb-slash">/</span><strong>{active}</strong></div>
       </div>
       <div className="topbar-actions">
-        <label className="global-search"><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search anything..." /><kbd>⌘ K</kbd></label>
+        <label className="global-search"><Search size={17} /><input maxLength="100" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search students..." /></label>
         <button className="icon-button theme-button" onClick={() => setDark(!dark)} aria-label="Toggle color theme">{dark ? <Sun size={18} /> : <Moon size={18} />}</button>
-        <button className="notification-button" aria-label="Notifications" onClick={() => toast('You’re all caught up!')}><Bell size={19} /><i /></button>
         <span className="topbar-divider" />
-        <button className="profile-button"><span className="profile-avatar">JD</span><span className="profile-label"><strong>Jordan Davis</strong><small>School Admin</small></span><ChevronDown size={15} /></button>
+        <span className="profile-static"><span className="profile-avatar">S</span><span className="profile-label"><strong>School workspace</strong><small>Student records</small></span></span>
       </div>
     </header>
   )
 }
 
-function AttendancePanel() {
+function Dashboard({ query, navigate }) {
+  const tenantId = import.meta.env.VITE_TENANT_ID
+  const [summary, setSummary] = useState(null)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
+
+  const loadSummary = useCallback(async (signal) => {
+    if (!tenantId) {
+      setError('Set VITE_TENANT_ID in the frontend environment to load dashboard data.')
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    setError('')
+    try {
+      setSummary(await getDashboardSummary(tenantId, signal))
+    } catch (loadError) {
+      if (loadError.name !== 'AbortError') setError(loadError.message)
+    } finally {
+      if (!signal?.aborted) setLoading(false)
+    }
+  }, [tenantId])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    loadSummary(controller.signal)
+    return () => controller.abort()
+  }, [loadSummary])
+
+  const chartData = useMemo(() => {
+    const year = new Date().getFullYear()
+    const grouped = new Map((summary?.monthlyEnrollments ?? []).map((row) => [`${row.year}-${row.month}`, row.count]))
+    return Array.from({ length: 12 }, (_, index) => ({
+      month: new Intl.DateTimeFormat('en', { month: 'short' }).format(new Date(year, index, 1)),
+      current: grouped.get(`${year}-${index + 1}`) ?? 0,
+      previous: grouped.get(`${year - 1}-${index + 1}`) ?? 0,
+    }))
+  }, [summary])
+
+  const exportStudents = async () => {
+    try {
+      const firstPage = await getStudents({ tenantId, page: 0, size: 100 })
+      const pages = []
+      for (let page = 1; page < Math.ceil(firstPage.totalElements / 100); page += 1) {
+        pages.push(await getStudents({ tenantId, page, size: 100 }))
+      }
+      const students = [firstPage, ...pages].flatMap((result) => result.content)
+      const quote = (value) => {
+        const text = String(value ?? '')
+        const safeText = /^[=+\-@]/.test(text) ? `'${text}` : text
+        return `"${safeText.replaceAll('"', '""')}"`
+      }
+      const rows = [
+        ['Enrollment No', 'First Name', 'Last Name', 'Email', 'Department', 'Status'],
+        ...students.map((student) => [
+          student.enrollmentNo, student.firstName, student.lastName,
+          student.email, student.department, student.admissionStatus,
+        ]),
+      ]
+      const csv = rows.map((row) => row.map(quote).join(',')).join('\r\n')
+      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'students.csv'
+      link.click()
+      window.setTimeout(() => URL.revokeObjectURL(url), 0)
+      toast.success(`Exported ${students.length} students.`)
+    } catch (exportError) {
+      toast.error(exportError.message)
+    }
+  }
+
+  const dateLabel = useMemo(
+    () => new Intl.DateTimeFormat('en', { month: 'long', day: 'numeric', year: 'numeric' }).format(new Date()),
+    [],
+  )
+  const currentYear = new Date().getFullYear()
+  const yearTotal = summary?.monthlyEnrollments
+    .filter((row) => row.year === currentYear)
+    .reduce((total, row) => total + row.count, 0) ?? 0
+
   return (
-    <section className="panel attendance-panel">
-      <div className="panel-heading"><div><h2>Today’s attendance</h2><p>Thursday, October 24, 2024</p></div><button className="icon-button compact"><MoreHorizontalIcon /></button></div>
-      <div className="attendance-summary"><div className="attendance-ring"><span><strong>94.8%</strong><small>Present</small></span></div><div className="attendance-numbers"><div><i className="legend-dot present-dot" /><span>Present</span><strong>1,284</strong></div><div><i className="legend-dot absent-dot" /><span>Absent</span><strong>56</strong></div><div><i className="legend-dot late-dot" /><span>Late</span><strong>18</strong></div></div></div>
-      <div className="attendance-foot"><span><Activity size={14} /> 2.4% higher than last week</span><button onClick={() => toast('Attendance report is being prepared')}>Full report <ChevronRight size={14} /></button></div>
-    </section>
+    <div className="page-content">
+      <div className="welcome-row">
+        <div><div className="eyebrow">YOUR CAMPUS AT A GLANCE</div><h1>Student dashboard</h1><p>Live student records from your school workspace.</p></div>
+        <div className="welcome-actions">
+          <span className="date-label"><CalendarDays size={15} /> {dateLabel}</span>
+          <button className="button-secondary" onClick={exportStudents}><Download size={16} /> Export students</button>
+          <button className="button-primary" onClick={() => navigate('Students')}><Plus size={17} /> Add student</button>
+        </div>
+      </div>
+
+      {error && <div className="records-error" role="alert">{error}<button className="button-secondary" onClick={() => loadSummary()}>Retry</button></div>}
+      <section className="metrics-grid" aria-label="Student metrics">
+        <MetricCard title="Total students" value={loading ? '…' : (summary?.totalStudents ?? '—')} note="All student records" icon={GraduationCap} tone="metric-purple" />
+        <MetricCard title="Enrolled" value={loading ? '…' : (summary?.enrolledStudents ?? '—')} note="Admission status: enrolled" icon={Users} tone="metric-blue" />
+        <MetricCard title="New applications" value={loading ? '…' : (summary?.pendingAdmissions ?? '—')} note="Admission status: applied" icon={BookOpen} tone="metric-green" />
+      </section>
+
+      <div className="middle-grid">
+        <section className="panel enrollment-panel">
+          <div className="panel-heading chart-heading"><div><h2>Student enrollments</h2><p>New records created by month</p></div><span className="period-label">{currentYear}</span></div>
+          <div className="chart-legend"><span><i className="legend-line current-line" /> {currentYear}</span><span><i className="legend-line previous-line" /> {currentYear - 1}</span><strong>{yearTotal.toLocaleString()} <small>this year</small></strong></div>
+          <EnrollmentChart data={chartData} />
+        </section>
+        <section className="panel attendance-panel">
+          <div className="panel-heading"><div><h2>Attendance</h2><p>Attendance records are not connected yet.</p></div><Activity size={18} /></div>
+          <div className="module-placeholder"><CalendarDays size={28} /><strong>Attendance module unavailable</strong><span>No attendance API is currently configured for this application.</span></div>
+        </section>
+      </div>
+
+      <div className="bottom-grid">
+        <section className="panel students-panel">
+          <div className="panel-heading"><div><h2>Recently added students</h2><p>Latest records from the student database</p></div><button className="text-action" onClick={() => navigate('Students')}>Manage students</button></div>
+          <RecentStudents query={query} onViewAll={() => navigate('Students')} />
+        </section>
+        <section className="panel activity-panel">
+          <div className="panel-heading"><div><h2>Recent activity</h2><p>System activity</p></div></div>
+          <div className="module-placeholder"><Activity size={25} /><strong>Activity feed unavailable</strong><span>Activity tracking has not been implemented for this application.</span></div>
+        </section>
+      </div>
+      <footer className="page-footer"><span>Student Management System</span><span><span className="footer-dot" /> {error ? 'Dashboard data unavailable' : 'Connected to student API'}</span></footer>
+    </div>
   )
 }
 
-function MoreHorizontalIcon() {
-  return <span className="more-dots">···</span>
+function UnavailablePage({ title }) {
+  return <div className="page-content"><section className="panel unavailable-panel"><h1>{title}</h1><p>This module is not implemented yet. Student records and dashboard metrics are available.</p></section></div>
 }
 
 function App() {
-  const [active, setActive] = useState('Dashboard')
+  const pageForPath = () => window.location.pathname.replace(/\/+$/, '') === '/students' ? 'Students' : 'Dashboard'
+  const [active, setActive] = useState(pageForPath)
   const [query, setQuery] = useState('')
   const [dark, setDark] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const dateLabel = useMemo(() => new Intl.DateTimeFormat('en', { month: 'long', day: 'numeric', year: 'numeric' }).format(new Date()), [])
 
-  const addStudent = () => toast.success('New student workflow opened')
-  const exportReport = () => toast.success('Report export is being prepared')
+  useEffect(() => {
+    const handlePopState = () => setActive(pageForPath())
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
+  const navigate = (page) => {
+    if (!['Dashboard', 'Students'].includes(page)) {
+      setActive(page)
+      setMobileOpen(false)
+      return
+    }
+    const path = page === 'Students' ? '/students' : '/'
+    if (window.location.pathname !== path) window.history.pushState({}, '', path)
+    setActive(page)
+    setMobileOpen(false)
+  }
 
   return (
     <div className={`app-shell ${dark ? 'dark-theme' : ''}`}>
-      <Sidebar active={active} setActive={setActive} open={mobileOpen} onClose={() => setMobileOpen(false)} />
+      <Sidebar active={active} setActive={navigate} open={mobileOpen} onClose={() => setMobileOpen(false)} />
       <main className="main-area">
-        <Topbar query={query} setQuery={setQuery} dark={dark} setDark={setDark} setMobileOpen={setMobileOpen} />
-        <div className="page-content">
-          <motion.div className="welcome-row" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
-            <div><div className="eyebrow"><span className="welcome-sparkle">✳</span> YOUR CAMPUS AT A GLANCE</div><h1>Good morning, Jordan <span>✦</span></h1><p>Here’s what’s happening at your school today.</p></div>
-            <div className="welcome-actions"><span className="date-label"><CalendarDays size={15} /> {dateLabel}</span><button className="button-secondary" onClick={exportReport}><Download size={16} /> Export</button><button className="button-primary" onClick={addStudent}><Plus size={17} /> Add student</button></div>
-          </motion.div>
-
-          <section className="metrics-grid" aria-label="School metrics">
-            <MetricCard title="Total students" value="2,847" delta="+12.8%" note="vs last semester" icon={GraduationCap} tone="metric-purple" />
-            <MetricCard title="Teaching staff" value="184" delta="+4.2%" note="vs last semester" icon={Users} tone="metric-blue" />
-            <MetricCard title="Attendance rate" value="94.8%" delta="+2.4%" note="vs last week" icon={CalendarDays} tone="metric-green" />
-            <MetricCard title="Fees collected" value="$284,560" delta="−3.1%" note="vs last month" icon={CircleDollarSign} tone="metric-orange" negative />
-          </section>
-
-          <div className="middle-grid">
-            <section className="panel enrollment-panel">
-              <div className="panel-heading chart-heading"><div><h2>Student enrollment</h2><p>Enrollment growth throughout the year</p></div><button className="period-button">This year <ChevronDown size={14} /></button></div>
-              <div className="chart-legend"><span><i className="legend-line current-line" /> This year</span><span><i className="legend-line previous-line" /> Last year</span><strong>2,847 <small>total enrolled</small></strong></div>
-              <EnrollmentChart />
-            </section>
-            <AttendancePanel />
-          </div>
-
-          <div className="bottom-grid">
-            <section className="panel students-panel">
-              <div className="panel-heading"><div><h2>Recently enrolled</h2><p>Keep up with your newest students</p></div><button className="icon-button compact"><MoreHorizontalIcon /></button></div>
-              <RecentStudents query={query} />
-            </section>
-            <section className="panel activity-panel">
-              <div className="panel-heading"><div><h2>Recent activity</h2><p>Latest updates from your campus</p></div><button className="icon-button compact"><MoreHorizontalIcon /></button></div>
-              <div className="activity-list">
-                {activity.map(({ title, detail, time, tone, icon: Icon }) => <div className="activity-item" key={title}><span className={`activity-icon ${tone}`}><Icon size={16} /></span><span className="activity-copy"><strong>{title}</strong><small>{detail}</small></span><time>{time}</time></div>)}
-              </div>
-              <button className="activity-link" onClick={() => toast('Showing all campus activity')}>View all activity <ChevronRight size={15} /></button>
-            </section>
-          </div>
-          <footer className="page-footer"><span>© 2024 CampusOS</span><span><span className="footer-dot" /> All data is up to date <button><ChevronLeft size={14} /><ChevronRight size={14} /></button></span></footer>
-        </div>
+        <Topbar active={active} query={query} setQuery={setQuery} dark={dark} setDark={setDark} setMobileOpen={setMobileOpen} />
+        {active === 'Dashboard' && <Dashboard query={query} navigate={navigate} />}
+        {active === 'Students' && <StudentsPage query={query} setQuery={setQuery} />}
+        {!['Dashboard', 'Students'].includes(active) && <UnavailablePage title={active} />}
       </main>
     </div>
   )
