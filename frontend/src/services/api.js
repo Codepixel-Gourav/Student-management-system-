@@ -78,3 +78,14 @@ export async function login({ tenantSlug, email, password }) {
   saveSession(response)
   return getSession()
 }
+
+export async function register({ tenantName, tenantSlug, email, password, displayName }) {
+  const response = await apiRequest('/auth/register', {
+    method: 'POST',
+    anonymous: true,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tenantName, tenantSlug, email, password, displayName }),
+  })
+  saveSession(response)
+  return getSession()
+}

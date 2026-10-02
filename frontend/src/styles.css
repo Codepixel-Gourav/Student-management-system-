@@ -61,6 +61,8 @@ button{cursor:pointer}
 .unavailable-panel h1{font-size:20px;margin:0 0 8px}
 .unavailable-panel p{color:var(--muted);font-size:12px}
 @media(max-width:600px){.student-form-grid{grid-template-columns:1fr}.student-modal{padding:16px}.records-toolbar{align-items:flex-start;flex-direction:column}.records-search{width:100%}.records-error{align-items:flex-start;flex-direction:column}}
+.login-mode-toggle{display:block;margin:16px auto 0;padding:5px;border:0;background:transparent;color:#6259d3;font-size:11px;cursor:pointer}
+.login-mode-toggle:disabled{opacity:.55;cursor:not-allowed}
 .login-screen{min-height:100vh;display:grid;place-items:center;padding:20px;background:var(--page,#f7f8fb)}
 .login-card{width:min(420px,100%);padding:30px;background:#fff;border:1px solid #eceef3;border-radius:14px;box-shadow:0 16px 50px #1c254015}
 .login-brand{display:flex;align-items:center;gap:11px;color:#282a3b;font-size:14px;margin-bottom:26px}

@@ -4,13 +4,25 @@
 
 Set `SMS_JWT_SECRET` to a random secret containing at least 32 bytes (for example, a securely generated 32-byte Base64 value). The application fails during startup if this is missing or too short. Access tokens are HS256 signed and last 15 minutes by default; configure `SMS_ACCESS_TOKEN_MINUTES` to a value from 1 through 60. Use a secret manager in deployed environments.
 
-There is no public registration endpoint. For initial tenant-admin creation, configure `SMS_BOOTSTRAP_TENANT_ID`, `SMS_BOOTSTRAP_EMAIL`, `SMS_BOOTSTRAP_PASSWORD` (minimum 12 characters), and `SMS_BOOTSTRAP_DISPLAY_NAME` together for a one-time application startup. The tenant must already exist and be active. The runner creates one active `SCHOOL_ADMIN` account only if that tenant/email does not already exist; it refuses to reset or grant privileges to an existing account. Remove the bootstrap environment values after that startup. Never expose bootstrap values in public runtime configuration.
+`POST /api/auth/register` creates an active tenant and its first active `SCHOOL_ADMIN` account in one transaction, then returns a short-lived bearer token. Tenant slugs must use lowercase letters/digits separated by single hyphens; administrator passwords must contain at least 12 characters. Tenant slugs must be unique. Registration is public, so production operators should apply edge-level rate limits and abuse monitoring.
 
-The database password must be stored in `app_users.password_hash` as a BCrypt hash. The bootstrap mechanism hashes its supplied password with BCrypt cost 12. Existing accounts must be `ACTIVE`, and their tenant must be `ACTIVE`, to sign in.
+There is no startup admin-provisioning runner or `SMS_BOOTSTRAP_*` configuration. Registration hashes passwords with BCrypt cost 12. Existing accounts and their tenant must be `ACTIVE` to sign in.
 
 ## Authentication contract
 
-`POST /api/auth/login` is the only public application API:
+`POST /api/auth/register` accepts:
+
+```json
+{
+  "tenantName": "Example School",
+  "tenantSlug": "example-school",
+  "email": "admin@example.edu",
+  "password": "a-long-unique-password",
+  "displayName": "School Administrator"
+}
+```
+
+It returns the same token response shape as login and signs in the newly created administrator. `POST /api/auth/login` accepts:
 
 ```json
 {
@@ -20,7 +32,7 @@ The database password must be stored in `app_users.password_hash` as a BCrypt ha
 }
 ```
 
-Success returns an `accessToken`, `tokenType` (`Bearer`), `expiresAt`, `userId`, `tenantId`, `email`, and role codes. Send it on other API calls as `Authorization: Bearer <accessToken>`. Invalid credentials return 401 without identifying which value was incorrect. There is no public user creation or refresh-token endpoint.
+Success returns an `accessToken`, `tokenType` (`Bearer`), `expiresAt`, `userId`, `tenantId`, `email`, and role codes. Send it on other API calls as `Authorization: Bearer <accessToken>`. Invalid credentials return 401 without identifying which value was incorrect. Public registration creates only a new tenant's first school administrator; other user provisioning remains administrator-only.
 
 Authenticated tenant and roles come only from the verified token. Any legacy `tenantId` request parameter or JSON property does not select a tenant. `SCHOOL_ADMIN` and `SUPER_ADMIN` can mutate records; teachers have read access to student/dashboard and academic data. Campus settings, student, academic-period, course, and class-section writes are administrator-only.
 

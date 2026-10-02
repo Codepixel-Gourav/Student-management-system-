@@ -2,6 +2,7 @@ package com.example.SMS.controller;
 
 import com.example.SMS.dto.LoginRequest;
 import com.example.SMS.dto.LoginResponse;
+import com.example.SMS.dto.RegistrationRequest;
 import com.example.SMS.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,5 +22,10 @@ public class AuthController {
     @PostMapping("/login")
     public LoginResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);
+    }
+
+    @PostMapping("/register")
+    public LoginResponse register(@Valid @RequestBody RegistrationRequest request) {
+        return authService.register(request);
     }
 }

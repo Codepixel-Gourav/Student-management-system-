@@ -14,6 +14,7 @@ Set these Render environment variables before deploying:
 
 - `DATABASE_URL` and `DATABASE_USERNAME` / `DATABASE_PASSWORD` for PostgreSQL.
 - `SMS_JWT_SECRET` to a secure random secret of at least 32 bytes.
-- The one-time `SMS_BOOTSTRAP_TENANT_ID`, `SMS_BOOTSTRAP_EMAIL`, `SMS_BOOTSTRAP_PASSWORD` (12+ characters), and `SMS_BOOTSTRAP_DISPLAY_NAME` values to provision the first admin in an existing active tenant. Remove these bootstrap values after the admin is provisioned.
+
+The first school tenant and its administrator are created through `POST /api/auth/register`; there are no tenant/admin bootstrap environment variables or provisioning queries on application startup. Since registration is public, configure request rate limits and abuse monitoring at the deployment edge. After registration, sign in is immediate; add a campus under Settings before creating student records.
 
 See [BACKEND_AUTH.md](BACKEND_AUTH.md) for authentication behavior, API contracts, role permissions, and remaining schema areas without CRUD endpoints. `VITE_TENANT_ID` is intentionally not used: tenant scope is determined by the authenticated token, not by a client-controlled environment value.

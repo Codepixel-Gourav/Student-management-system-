@@ -2,6 +2,7 @@ package com.example.SMS.service;
 
 import com.example.SMS.dto.LoginRequest;
 import com.example.SMS.dto.LoginResponse;
+import com.example.SMS.dto.RegistrationRequest;
 import com.example.SMS.security.AuthenticatedUser;
 import com.example.SMS.security.JwtService;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,6 +17,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.springframework.http.HttpStatus.UNAUTHORIZED;
+import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 
 @Service
 public class AuthService {
@@ -67,6 +69,37 @@ public class AuthService {
         AuthenticatedUser user = new AuthenticatedUser(account.id(), account.tenantId(), account.email(), roles);
         return new LoginResponse(jwtService.issue(user), "Bearer",
                 Instant.now().plusSeconds(tokenMinutes * 60), user.id(), user.tenantId(), user.email(), roles);
+    }
+
+    @Transactional
+    public LoginResponse register(RegistrationRequest request) {
+        UUID tenantId = jdbcTemplate.queryForObject("""
+                INSERT INTO tenants (name, slug, status)
+                VALUES (?, ?, 'ACTIVE')
+                RETURNING id
+                """, UUID.class, request.tenantName().trim(), request.tenantSlug().trim());
+
+        UUID userId = jdbcTemplate.queryForObject("""
+                INSERT INTO app_users (tenant_id, email, password_hash, display_name, status)
+                VALUES (?, ?, ?, ?, 'ACTIVE')
+                RETURNING id
+                """, UUID.class, tenantId, request.email().trim().toLowerCase(),
+                passwordEncoder.encode(request.password()), request.displayName().trim());
+
+        int roleAssigned = jdbcTemplate.update("""
+                INSERT INTO user_roles (user_id, role_id)
+                SELECT ?, id FROM roles WHERE code = 'SCHOOL_ADMIN'
+                """, userId);
+        if (roleAssigned != 1) {
+            throw new ResponseStatusException(INTERNAL_SERVER_ERROR,
+                    "School administrator role is not configured.");
+        }
+
+        Set<String> roles = Set.of("SCHOOL_ADMIN");
+        AuthenticatedUser user = new AuthenticatedUser(userId, tenantId,
+                request.email().trim().toLowerCase(), roles);
+        return new LoginResponse(jwtService.issue(user), "Bearer",
+                Instant.now().plusSeconds(tokenMinutes * 60), userId, tenantId, user.email(), roles);
     }
 
     private ResponseStatusException invalidCredentials() {
