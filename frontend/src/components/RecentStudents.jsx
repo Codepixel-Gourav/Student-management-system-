@@ -1,29 +1,69 @@
-import { ArrowUpRight, MoreHorizontal } from 'lucide-react'
-
-const students = [
-  { name: 'Olivia Rhye', email: 'olivia.rhye@northwood.edu', initials: 'OR', color: 'lilac', id: 'STU-2024-0842', course: 'Computer Science', status: 'Active' },
-  { name: 'Phoenix Baker', email: 'phoenix.baker@northwood.edu', initials: 'PB', color: 'peach', id: 'STU-2024-0839', course: 'Business Admin', status: 'Active' },
-  { name: 'Lana Steiner', email: 'lana.steiner@northwood.edu', initials: 'LS', color: 'mint', id: 'STU-2024-0834', course: 'Visual Arts', status: 'Pending' },
-  { name: 'Demi Wilkinson', email: 'demi.wilkinson@northwood.edu', initials: 'DW', color: 'blue', id: 'STU-2024-0828', course: 'Engineering', status: 'Active' },
-]
+import { useEffect, useState } from 'react'
+import { ArrowUpRight } from 'lucide-react'
+import { getStudents } from '../services/studentService.js'
 
 export default function RecentStudents({ query }) {
-  const filtered = students.filter((student) => `${student.name} ${student.email} ${student.id} ${student.course}`.toLowerCase().includes(query.toLowerCase()))
+  const [students, setStudents] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    getStudents({
+      tenantId: import.meta.env.VITE_TENANT_ID,
+      size: 100,
+      sortBy: 'createdAt',
+      signal: controller.signal,
+    })
+      .then(setStudents)
+      .catch((loadError) => {
+        if (loadError.name !== 'AbortError') setError(loadError.message)
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false)
+      })
+
+    return () => controller.abort()
+  }, [])
+
+  const filtered = students
+    .slice()
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .filter((student) => {
+      const name = `${student.firstName} ${student.lastName}`
+      return `${name} ${student.email ?? ''} ${student.enrollmentNo} ${student.department ?? ''}`
+        .toLowerCase()
+        .includes(query.toLowerCase())
+    })
+    .slice(0, 5)
+
   return (
     <div className="table-scroll">
       <table className="student-table">
-        <thead><tr><th>STUDENT</th><th>STUDENT ID</th><th>PROGRAM</th><th>STATUS</th><th aria-label="Actions" /></tr></thead>
+        <thead><tr><th>STUDENT</th><th>STUDENT ID</th><th>PROGRAM</th><th>STATUS</th></tr></thead>
         <tbody>
-          {filtered.map((student) => (
-            <tr key={student.id}>
-              <td><div className="student-name"><span className={`student-avatar ${student.color}`}>{student.initials}</span><span><strong>{student.name}</strong><small>{student.email}</small></span></div></td>
-              <td className="id-cell">{student.id}</td>
-              <td>{student.course}</td>
-              <td><span className={`status-pill ${student.status.toLowerCase()}`}><i />{student.status}</span></td>
-              <td><button className="table-more" aria-label={`Actions for ${student.name}`}><MoreHorizontal size={18} /></button></td>
-            </tr>
-          ))}
-          {filtered.length === 0 && <tr><td colSpan="5" className="empty-state">No students match “{query}”.</td></tr>}
+          {loading && <tr><td colSpan="4" className="empty-state">Loading students…</td></tr>}
+          {!loading && error && <tr><td colSpan="4" className="empty-state">{error}</td></tr>}
+          {!loading && !error && filtered.map((student) => {
+            const name = `${student.firstName} ${student.lastName}`
+            const initials = `${student.firstName?.[0] ?? ''}${student.lastName?.[0] ?? ''}`
+            const status = student.admissionStatus ?? 'Unknown'
+
+            return (
+              <tr key={student.id}>
+                <td><div className="student-name"><span className="student-avatar lilac">{initials}</span><span><strong>{name}</strong><small>{student.email || 'No email'}</small></span></div></td>
+                <td className="id-cell">{student.enrollmentNo}</td>
+                <td>{student.department || '—'}</td>
+                <td><span className={`status-pill ${status.toLowerCase()}`}><i />{status}</span></td>
+              </tr>
+            )
+          })}
+          {!loading && !error && filtered.length === 0 && (
+            <tr><td colSpan="4" className="empty-state">
+              {query ? `No students match “${query}”.` : 'No students found.'}
+            </td></tr>
+          )}
         </tbody>
       </table>
       <button className="view-all">View all students <ArrowUpRight size={15} /></button>
