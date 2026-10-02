@@ -47,6 +47,7 @@ button{cursor:pointer}
 .records-pagination .button-secondary{height:30px}
 .records-pagination button:disabled{opacity:.45;cursor:not-allowed}
 .records-error{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0;color:#b44747;background:#fff2f0;border:1px solid #f4d1cc;border-radius:7px;padding:10px 12px;font-size:11px}
+.records-notice{margin:0 0 14px;padding:10px 12px;border:1px solid #ead9a7;border-radius:7px;background:#fff9e9;color:#80651b;font-size:11px}
 .modal-backdrop{position:fixed;inset:0;z-index:30;background:#15172b80;display:grid;place-items:center;padding:16px}
 .student-modal{width:min(620px,100%);max-height:calc(100vh - 32px);overflow:auto;background:var(--surface);color:var(--ink);border:1px solid var(--border);border-radius:12px;padding:22px;box-shadow:0 18px 60px #10132640}
 .modal-heading{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px}
@@ -60,3 +61,18 @@ button{cursor:pointer}
 .unavailable-panel h1{font-size:20px;margin:0 0 8px}
 .unavailable-panel p{color:var(--muted);font-size:12px}
 @media(max-width:600px){.student-form-grid{grid-template-columns:1fr}.student-modal{padding:16px}.records-toolbar{align-items:flex-start;flex-direction:column}.records-search{width:100%}.records-error{align-items:flex-start;flex-direction:column}}
+.login-screen{min-height:100vh;display:grid;place-items:center;padding:20px;background:var(--page,#f7f8fb)}
+.login-card{width:min(420px,100%);padding:30px;background:#fff;border:1px solid #eceef3;border-radius:14px;box-shadow:0 16px 50px #1c254015}
+.login-brand{display:flex;align-items:center;gap:11px;color:#282a3b;font-size:14px;margin-bottom:26px}
+.login-card h1{font-size:24px;margin:0;color:#25283a}
+.login-card>p{font-size:12px;color:#888da0;margin:8px 0 20px}
+.login-form{display:grid;gap:14px}
+.login-form label{display:grid;gap:6px;font-size:11px;color:#71778a}
+.login-form input{height:40px;border:1px solid #e3e5ed;border-radius:7px;padding:0 10px;font-size:12px}
+.login-form .button-primary{height:40px;justify-content:center;font-size:12px;margin-top:4px}
+.module-tabs{display:flex;gap:4px;margin:-6px 0 14px;border-bottom:1px solid var(--border);overflow:auto}
+.module-tab{white-space:nowrap;border:0;border-bottom:2px solid transparent;background:none;padding:10px 12px;color:var(--muted);font-size:11px}
+.module-tab.active{color:#5a4fc9;border-bottom-color:#635bdb;font-weight:650}
+.profile-static>.button-secondary{height:30px;padding:0 9px;font-size:10px}
+.records-pagination .button-secondary:hover:not(:disabled),.module-tab:hover{color:#5a4fc9}
+@media(max-width:600px){.login-card{padding:22px}.profile-static .profile-label{display:none}}

@@ -1,4 +1,4 @@
-import { BookOpen, CalendarDays, ChartNoAxesCombined, CircleHelp, CreditCard, GraduationCap, LayoutDashboard, MessageSquareText, Settings2, Users, X } from 'lucide-react'
+import { BookOpen, CalendarDays, ChartNoAxesCombined, CreditCard, GraduationCap, LayoutDashboard, MessageSquareText, Settings2, Users, X } from 'lucide-react'
 
 const groups = [
   {
@@ -37,15 +37,14 @@ export default function Sidebar({ active, setActive, open, onClose }) {
             </section>
           ))}
           <section className="nav-group nav-bottom">
-            <p>SUPPORT</p>
-            <button className="nav-link" onClick={() => setActive('Help center')}><CircleHelp size={18} /><span>Help center</span></button>
+            <p>WORKSPACE</p>
             <button className="nav-link" onClick={() => setActive('Settings')}><Settings2 size={18} /><span>Settings</span></button>
           </section>
         </nav>
         <div className="sidebar-upgrade">
           <div className="upgrade-icon"><MessageSquareText size={18} /></div>
-          <strong>More modules</strong>
-          <span>Teachers, attendance, academics, and billing are not connected yet.</span>
+          <strong>School workspace</strong>
+          <span>Manage student records, academic setup, and campus settings.</span>
         </div>
         <div className="sidebar-footer"><span className="status-dot" /> Dashboard &amp; student records</div>
       </aside>

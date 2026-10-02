@@ -6,9 +6,17 @@ import MetricCard from './components/MetricCard.jsx'
 import EnrollmentChart from './components/EnrollmentChart.jsx'
 import RecentStudents from './components/RecentStudents.jsx'
 import StudentsPage from './components/StudentsPage.jsx'
+import LoginPage from './components/LoginPage.jsx'
+import AcademicPage from './components/AcademicPage.jsx'
+import { clearSession, getSession } from './services/api.js'
 import { getDashboardSummary, getStudents } from './services/studentService.js'
 
-function Topbar({ active, query, setQuery, dark, setDark, setMobileOpen }) {
+function academicSectionFromPath() {
+  const segment = window.location.pathname.split('/').filter(Boolean).at(-1)
+  return ['periods', 'courses', 'sections'].includes(segment) ? segment : 'periods'
+}
+
+function Topbar({ active, query, setQuery, dark, setDark, setMobileOpen, session, onLogout }) {
   return (
     <header className="topbar">
       <div className="topbar-left">
@@ -19,34 +27,28 @@ function Topbar({ active, query, setQuery, dark, setDark, setMobileOpen }) {
         <label className="global-search"><Search size={17} /><input maxLength="100" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search students..." /></label>
         <button className="icon-button theme-button" onClick={() => setDark(!dark)} aria-label="Toggle color theme">{dark ? <Sun size={18} /> : <Moon size={18} />}</button>
         <span className="topbar-divider" />
-        <span className="profile-static"><span className="profile-avatar">S</span><span className="profile-label"><strong>School workspace</strong><small>Student records</small></span></span>
+        <span className="profile-static"><span className="profile-avatar">{session.email?.[0]?.toUpperCase() ?? 'U'}</span><span className="profile-label"><strong>{session.email}</strong><small>{session.roles?.join(', ')}</small></span><button className="button-secondary" onClick={onLogout}>Sign out</button></span>
       </div>
     </header>
   )
 }
 
 function Dashboard({ query, navigate }) {
-  const tenantId = import.meta.env.VITE_TENANT_ID
   const [summary, setSummary] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
 
   const loadSummary = useCallback(async (signal) => {
-    if (!tenantId) {
-      setError('Set VITE_TENANT_ID in the frontend environment to load dashboard data.')
-      setLoading(false)
-      return
-    }
     setLoading(true)
     setError('')
     try {
-      setSummary(await getDashboardSummary(tenantId, signal))
+      setSummary(await getDashboardSummary(signal))
     } catch (loadError) {
       if (loadError.name !== 'AbortError') setError(loadError.message)
     } finally {
       if (!signal?.aborted) setLoading(false)
     }
-  }, [tenantId])
+  }, [])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -66,10 +68,10 @@ function Dashboard({ query, navigate }) {
 
   const exportStudents = async () => {
     try {
-      const firstPage = await getStudents({ tenantId, page: 0, size: 100 })
+      const firstPage = await getStudents({ page: 0, size: 100 })
       const pages = []
       for (let page = 1; page < Math.ceil(firstPage.totalElements / 100); page += 1) {
-        pages.push(await getStudents({ tenantId, page, size: 100 }))
+        pages.push(await getStudents({ page, size: 100 }))
       }
       const students = [firstPage, ...pages].flatMap((result) => result.content)
       const quote = (value) => {
@@ -152,11 +154,22 @@ function Dashboard({ query, navigate }) {
 }
 
 function UnavailablePage({ title }) {
-  return <div className="page-content"><section className="panel unavailable-panel"><h1>{title}</h1><p>This module is not implemented yet. Student records and dashboard metrics are available.</p></section></div>
+  return <div className="page-content"><section className="panel unavailable-panel"><h1>{title}</h1><p>This module has no authenticated API yet. Student records, academic setup, campus settings, and dashboard data are available.</p></section></div>
 }
 
 function App() {
-  const pageForPath = () => window.location.pathname.replace(/\/+$/, '') === '/students' ? 'Students' : 'Dashboard'
+  const [session, setSession] = useState(getSession)
+  const pageForPath = () => {
+    const path = window.location.pathname.replace(/\/+$/, '')
+    if (path === '/students') return 'Students'
+    if (path.startsWith('/academics')) return 'Academics'
+    if (path.startsWith('/settings')) return 'Settings'
+    if (path === '/teachers') return 'Teachers'
+    if (path === '/attendance') return 'Attendance'
+    if (path === '/fees') return 'Fees & billing'
+    if (path === '/analytics') return 'Analytics'
+    return 'Dashboard'
+  }
   const [active, setActive] = useState(pageForPath)
   const [query, setQuery] = useState('')
   const [dark, setDark] = useState(false)
@@ -164,17 +177,46 @@ function App() {
 
   useEffect(() => {
     const handlePopState = () => setActive(pageForPath())
+    const handleUnauthorized = () => setSession(null)
     window.addEventListener('popstate', handlePopState)
-    return () => window.removeEventListener('popstate', handlePopState)
+    window.addEventListener('sms:unauthorized', handleUnauthorized)
+    return () => {
+      window.removeEventListener('popstate', handlePopState)
+      window.removeEventListener('sms:unauthorized', handleUnauthorized)
+    }
   }, [])
 
+  useEffect(() => {
+    if (!session) return undefined
+    const delay = Math.max(0, Date.parse(session.expiresAt) - Date.now())
+    const timeout = window.setTimeout(() => {
+      clearSession()
+      setSession(null)
+    }, delay)
+    return () => window.clearTimeout(timeout)
+  }, [session])
+
+  const handleLogout = () => {
+    clearSession()
+    setSession(null)
+  }
+
+  if (!session) return <LoginPage onLogin={setSession} />
+
   const navigate = (page) => {
-    if (!['Dashboard', 'Students'].includes(page)) {
-      setActive(page)
-      setMobileOpen(false)
-      return
+    const paths = {
+      Dashboard: '/',
+      Students: '/students',
+      Academics: '/academics',
+      Settings: '/settings/campuses',
+      Teachers: '/teachers',
+      Attendance: '/attendance',
+      Analytics: '/analytics',
+      'Fees & billing': '/fees',
+      'Fees': '/fees',
     }
-    const path = page === 'Students' ? '/students' : '/'
+    const path = paths[page]
+    if (!path) return
     if (window.location.pathname !== path) window.history.pushState({}, '', path)
     setActive(page)
     setMobileOpen(false)
@@ -184,10 +226,12 @@ function App() {
     <div className={`app-shell ${dark ? 'dark-theme' : ''}`}>
       <Sidebar active={active} setActive={navigate} open={mobileOpen} onClose={() => setMobileOpen(false)} />
       <main className="main-area">
-        <Topbar active={active} query={query} setQuery={setQuery} dark={dark} setDark={setDark} setMobileOpen={setMobileOpen} />
-        {active === 'Dashboard' && <Dashboard query={query} navigate={navigate} />}
-        {active === 'Students' && <StudentsPage query={query} setQuery={setQuery} />}
-        {!['Dashboard', 'Students'].includes(active) && <UnavailablePage title={active} />}
+        <Topbar active={active} query={query} setQuery={setQuery} dark={dark} setDark={setDark} setMobileOpen={setMobileOpen} session={session} onLogout={handleLogout} />
+        {['Dashboard', 'Analytics'].includes(active) && <Dashboard query={query} navigate={navigate} />}
+        {active === 'Students' && <StudentsPage query={query} setQuery={setQuery} session={session} />}
+        {active === 'Academics' && <AcademicPage section={academicSectionFromPath()} session={session} />}
+        {active === 'Settings' && <AcademicPage section="campuses" session={session} />}
+        {!['Dashboard', 'Analytics', 'Students', 'Academics', 'Settings'].includes(active) && <UnavailablePage title={active} />}
       </main>
     </div>
   )

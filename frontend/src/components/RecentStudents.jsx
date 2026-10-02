@@ -13,7 +13,6 @@ export default function RecentStudents({ query, onViewAll }) {
     setError('')
 
     getStudents({
-      tenantId: import.meta.env.VITE_TENANT_ID,
       size: 5,
       sortBy: 'createdAt',
       search: query,

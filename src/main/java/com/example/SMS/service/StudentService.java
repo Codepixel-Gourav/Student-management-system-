@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import com.example.SMS.security.AuthenticatedUser;
 
 @Service
 @Transactional(readOnly = true)
@@ -73,11 +74,11 @@ public class StudentService {
     }
 
     @Transactional
-    public Student createStudent(CreateStudentRequest request) {
+    public Student createStudent(AuthenticatedUser user, CreateStudentRequest request) {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         Student student = new Student();
         student.setId(UUID.randomUUID());
-        student.setTenantId(request.tenantId());
+        student.setTenantId(user.tenantId());
         student.setCampusId(request.campusId());
         student.setEnrollmentNo(request.enrollmentNo().trim());
         student.setFirstName(request.firstName().trim());

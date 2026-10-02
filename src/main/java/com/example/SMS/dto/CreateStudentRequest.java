@@ -11,7 +11,6 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 public record CreateStudentRequest(
-        @NotNull UUID tenantId,
         @NotNull UUID campusId,
         @NotBlank @Size(max = 60) String enrollmentNo,
         @NotBlank @Size(max = 100) String firstName,

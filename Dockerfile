@@ -5,11 +5,9 @@ COPY frontend/package*.json ./
 RUN npm ci
 COPY frontend/ ./
 ARG VITE_API_BASE_URL=/api
-ARG VITE_TENANT_ID
-ARG VITE_CAMPUS_ID
+ARG VITE_TENANT_SLUG
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
-ENV VITE_TENANT_ID=${VITE_TENANT_ID}
-ENV VITE_CAMPUS_ID=${VITE_CAMPUS_ID}
+ENV VITE_TENANT_SLUG=${VITE_TENANT_SLUG}
 RUN npm run build
 
 # Package the frontend assets together with the Spring Boot application.
