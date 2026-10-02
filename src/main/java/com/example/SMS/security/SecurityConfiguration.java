@@ -35,11 +35,15 @@ public class SecurityConfiguration {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
-                        // School aur Tenant registration endpoints ko public kar diya hai
-                        .requestMatchers("/api/auth/login", "/api/auth/register",
-                                "/api/schools", "/api/schools/**",
-                                "/api/tenants", "/api/tenants/**",
-                                "/actuator/health", "/actuator/health/**").permitAll()
+                        // Saare auth, schools aur tenants ke paths ko completely public kar diya hai
+                        .requestMatchers(
+                                "/api/auth/**",
+                                "/api/schools/**",
+                                "/api/tenants/**",
+                                "/api/tenant/**",
+                                "/actuator/health",
+                                "/actuator/health/**"
+                        ).permitAll()
                         .requestMatchers("/actuator/**").denyAll()
                         .requestMatchers("/api", "/api/**").authenticated()
                         .anyRequest().permitAll())
