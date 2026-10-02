@@ -29,9 +29,10 @@ public class SecurityConfiguration {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
-                        // School registration aur Auth endpoints ko public/permitAll kar diya hai
+                        // School aur Tenant registration endpoints ko public kar diya hai
                         .requestMatchers("/api/auth/login", "/api/auth/register",
                                 "/api/schools", "/api/schools/**",
+                                "/api/tenants", "/api/tenants/**",
                                 "/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers("/actuator/**").denyAll()
                         .requestMatchers("/api", "/api/**").authenticated()
