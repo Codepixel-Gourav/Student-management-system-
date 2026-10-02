@@ -15,6 +15,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfiguration {
+
     @Bean
     FilterRegistrationBean<JwtAuthenticationFilter> jwtFilterServletRegistration(JwtAuthenticationFilter jwtFilter) {
         FilterRegistrationBean<JwtAuthenticationFilter> registration = new FilterRegistrationBean<>(jwtFilter);
@@ -28,7 +29,9 @@ public class SecurityConfiguration {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
+                        // School registration aur Auth endpoints ko public/permitAll kar diya hai
                         .requestMatchers("/api/auth/login", "/api/auth/register",
+                                "/api/schools", "/api/schools/**",
                                 "/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers("/actuator/**").denyAll()
                         .requestMatchers("/api", "/api/**").authenticated()
