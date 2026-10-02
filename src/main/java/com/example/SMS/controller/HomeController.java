@@ -1,20 +1,13 @@
 package com.example.SMS.controller;
 
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.stereotype.Controller;
 
-import java.util.Map;
-
-@RestController
+@Controller
 public class HomeController {
 
     @GetMapping("/")
-    public Map<String, String> home() {
-        return Map.of(
-                "message", "Student Management System API is running",
-                "status", "UP",
-                "students", "/api/students",
-                "health", "/actuator/health"
-        );
+    public String home() {
+        return "forward:/index.html";
     }
 }
