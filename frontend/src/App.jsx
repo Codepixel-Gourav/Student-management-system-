@@ -8,8 +8,12 @@ import RecentStudents from './components/RecentStudents.jsx'
 import StudentsPage from './components/StudentsPage.jsx'
 import LoginPage from './components/LoginPage.jsx'
 import AcademicPage from './components/AcademicPage.jsx'
+import StaffPage from './components/StaffPage.jsx'
+import AttendancePage from './components/AttendancePage.jsx'
+import FinancePage from './components/FinancePage.jsx'
 import { clearSession, getSession } from './services/api.js'
 import { getDashboardSummary, getStudents } from './services/studentService.js'
+import { attendanceApi } from './services/attendanceService.js'
 
 function academicSectionFromPath() {
   const segment = window.location.pathname.split('/').filter(Boolean).at(-1)
@@ -37,6 +41,8 @@ function Dashboard({ query, navigate }) {
   const [summary, setSummary] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const [todaySessions, setTodaySessions] = useState(null)
+  const [attendanceLoadError, setAttendanceLoadError] = useState(false)
 
   const loadSummary = useCallback(async (signal) => {
     setLoading(true)
@@ -55,6 +61,19 @@ function Dashboard({ query, navigate }) {
     loadSummary(controller.signal)
     return () => controller.abort()
   }, [loadSummary])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    attendanceApi.sessions(controller.signal)
+      .then((sessions) => {
+        const today = new Date().toLocaleDateString()
+        setTodaySessions(sessions.filter((session) => new Date(session.startsAt).toLocaleDateString() === today).length)
+      })
+      .catch((loadError) => {
+        if (loadError.name !== 'AbortError') setAttendanceLoadError(true)
+      })
+    return () => controller.abort()
+  }, [])
 
   const chartData = useMemo(() => {
     const year = new Date().getFullYear()
@@ -133,8 +152,8 @@ function Dashboard({ query, navigate }) {
           <EnrollmentChart data={chartData} />
         </section>
         <section className="panel attendance-panel">
-          <div className="panel-heading"><div><h2>Attendance</h2><p>Attendance records are not connected yet.</p></div><Activity size={18} /></div>
-          <div className="module-placeholder"><CalendarDays size={28} /><strong>Attendance module unavailable</strong><span>No attendance API is currently configured for this application.</span></div>
+          <div className="panel-heading"><div><h2>Attendance</h2><p>Today’s scheduled class sessions</p></div><Activity size={18} /></div>
+          <div className="module-placeholder"><CalendarDays size={28} /><strong>{attendanceLoadError ? 'Schedule unavailable' : todaySessions === null ? 'Loading schedule…' : `${todaySessions} session${todaySessions === 1 ? '' : 's'} today`}</strong><button className="text-action" onClick={() => navigate('Attendance')}>Open attendance</button></div>
         </section>
       </div>
 
@@ -153,8 +172,8 @@ function Dashboard({ query, navigate }) {
   )
 }
 
-function UnavailablePage({ title }) {
-  return <div className="page-content"><section className="panel unavailable-panel"><h1>{title}</h1><p>This module has no authenticated API yet. Student records, academic setup, campus settings, and dashboard data are available.</p></section></div>
+function RestrictedPage({ title }) {
+  return <div className="page-content"><section className="panel unavailable-panel"><h1>{title}</h1><p>This page is available to school administrators only.</p></section></div>
 }
 
 function App() {
@@ -202,6 +221,7 @@ function App() {
   }
 
   if (!session) return <LoginPage onLogin={setSession} />
+  const isAdmin = session.roles?.some((role) => ['SCHOOL_ADMIN', 'SUPER_ADMIN'].includes(role))
 
   const navigate = (page) => {
     const paths = {
@@ -224,14 +244,16 @@ function App() {
 
   return (
     <div className={`app-shell ${dark ? 'dark-theme' : ''}`}>
-      <Sidebar active={active} setActive={navigate} open={mobileOpen} onClose={() => setMobileOpen(false)} />
+      <Sidebar active={active} setActive={navigate} open={mobileOpen} onClose={() => setMobileOpen(false)} session={session} />
       <main className="main-area">
         <Topbar active={active} query={query} setQuery={setQuery} dark={dark} setDark={setDark} setMobileOpen={setMobileOpen} session={session} onLogout={handleLogout} />
         {['Dashboard', 'Analytics'].includes(active) && <Dashboard query={query} navigate={navigate} />}
         {active === 'Students' && <StudentsPage query={query} setQuery={setQuery} session={session} />}
         {active === 'Academics' && <AcademicPage section={academicSectionFromPath()} session={session} />}
         {active === 'Settings' && <AcademicPage section="campuses" session={session} />}
-        {!['Dashboard', 'Analytics', 'Students', 'Academics', 'Settings'].includes(active) && <UnavailablePage title={active} />}
+        {active === 'Teachers' && (isAdmin ? <StaffPage session={session} /> : <RestrictedPage title="Teachers" />)}
+        {active === 'Attendance' && <AttendancePage session={session} />}
+        {active === 'Fees & billing' && (isAdmin ? <FinancePage /> : <RestrictedPage title="Fees & billing" />)}
       </main>
     </div>
   )

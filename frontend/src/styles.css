@@ -76,3 +76,14 @@ button{cursor:pointer}
 .profile-static>.button-secondary{height:30px;padding:0 9px;font-size:10px}
 .records-pagination .button-secondary:hover:not(:disabled),.module-tab:hover{color:#5a4fc9}
 @media(max-width:600px){.login-card{padding:22px}.profile-static .profile-label{display:none}}
+.inline-record-form{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;margin:12px 0}
+.inline-record-form label{display:grid;gap:5px;color:var(--muted);font-size:10px}
+.inline-record-form select,.student-form-grid textarea{min-width:180px;height:36px;padding:0 9px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--ink);font-size:11px}
+.student-form-grid textarea{height:auto;min-height:80px;padding:9px;resize:vertical}
+.student-form-grid .wide-field{grid-column:1/-1}
+.form-hint{grid-column:1/-1;margin:0;color:var(--muted);font-size:10px;line-height:1.5}
+.selected-record-row{background:#f7f6ff}
+.dark-theme .selected-record-row{background:#282739}
+.attendance-records-panel{margin-top:14px}
+.records-table-scroll .student-table select{height:29px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--ink);font-size:10px}
+@media(max-width:600px){.inline-record-form{align-items:stretch;flex-direction:column}.inline-record-form label,.inline-record-form select{width:100%}.student-form-grid .wide-field{grid-column:auto}}

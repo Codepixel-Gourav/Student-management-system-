@@ -148,6 +148,21 @@ public class AttendanceService {
                 rs.getObject("marked_at", OffsetDateTime.class)), tenantId, sessionId);
     }
 
+    public List<AttendanceStudentView> eligibleStudents(UUID tenantId, UUID sessionId) {
+        getSession(tenantId, sessionId);
+        return jdbc.query("""
+                SELECT st.id, st.enrollment_no, st.first_name, st.last_name
+                FROM attendance_sessions s
+                JOIN class_sections cs ON cs.id = s.class_section_id
+                JOIN enrollments e ON e.class_section_id = cs.id AND e.status = 'ACTIVE'
+                JOIN students st ON st.id = e.student_id AND st.tenant_id = cs.tenant_id
+                WHERE cs.tenant_id = ? AND s.id = ?
+                ORDER BY st.last_name, st.first_name, st.enrollment_no
+                """, (rs, row) -> new AttendanceStudentView(
+                rs.getObject("id", UUID.class), rs.getString("enrollment_no"),
+                rs.getString("first_name"), rs.getString("last_name")), tenantId, sessionId);
+    }
+
     public RecordView getRecord(UUID tenantId, UUID id) {
         return found(jdbc.query("""
                 SELECT ar.id, ar.session_id, ar.student_id, ar.status, ar.source, ar.marked_at
@@ -334,6 +349,9 @@ public class AttendanceService {
 
     public record SessionView(UUID id, UUID classSectionId, UUID courseId, UUID teacherUserId,
                               OffsetDateTime startsAt, OffsetDateTime endsAt) {
+    }
+
+    public record AttendanceStudentView(UUID id, String enrollmentNo, String firstName, String lastName) {
     }
 
     public record RecordView(UUID id, UUID sessionId, UUID studentId, String status, String source,

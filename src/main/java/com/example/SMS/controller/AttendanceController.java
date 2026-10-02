@@ -62,6 +62,12 @@ public class AttendanceController {
         return service.records(user.tenantId(), sessionId);
     }
 
+    @GetMapping("/sessions/{sessionId}/students")
+    public List<AttendanceService.AttendanceStudentView> eligibleStudents(
+            @AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID sessionId) {
+        return service.eligibleStudents(user.tenantId(), sessionId);
+    }
+
     @PostMapping("/sessions/{sessionId}/records")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyRole('SCHOOL_ADMIN', 'SUPER_ADMIN', 'TEACHER')")

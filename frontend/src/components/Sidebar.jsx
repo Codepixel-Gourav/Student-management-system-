@@ -11,7 +11,13 @@ const groups = [
   },
 ]
 
-export default function Sidebar({ active, setActive, open, onClose }) {
+export default function Sidebar({ active, setActive, open, onClose, session }) {
+  const isAdmin = session?.roles?.some((role) => ['SCHOOL_ADMIN', 'SUPER_ADMIN'].includes(role))
+  const visibleGroups = groups.map((group) => ({
+    ...group,
+    links: group.links.filter(({ label }) => isAdmin || !['Teachers', 'Fees & billing'].includes(label)),
+  }))
+
   return (
     <>
       {open && <button className="sidebar-backdrop" aria-label="Close navigation" onClick={onClose} />}
@@ -26,7 +32,7 @@ export default function Sidebar({ active, setActive, open, onClose }) {
           <span className="campus-copy"><strong>School workspace</strong><small>Student records</small></span>
         </div>
         <nav className="navigation" aria-label="Main navigation">
-          {groups.map((group) => (
+          {visibleGroups.map((group) => (
             <section key={group.label} className="nav-group">
               <p>{group.label}</p>
               {group.links.map(({ label, icon: Icon }) => (
